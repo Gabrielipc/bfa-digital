@@ -1,0 +1,752 @@
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui/card";
+import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
+import { Textarea } from "../ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
+import { Checkbox } from "../ui/checkbox";
+import { Switch } from "../ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { Progress } from "../ui/progress";
+import { Avatar, AvatarFallback } from "../ui/avatar";
+import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
+import { Separator } from "../ui/separator";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
+import {
+  Activity, Users, ClipboardList, FileBarChart, ShieldCheck, ImageUp, ListChecks,
+  Plus, Copy, RotateCw, Filter, Download, FileText, FileSpreadsheet, Search, MoreHorizontal,
+  Lock, Unlock, CheckCircle2, XCircle, AlertTriangle, Eye, Upload, Image as ImageIcon,
+  ChevronRight, Inbox, Calendar, MapPin, Clock, Hash, KeyRound, Trash2, Pencil, Send
+} from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend } from "recharts";
+
+const COLORS = ["#0f2649", "#1e4e8c", "#b91c1c", "#64748b", "#10b981", "#f59e0b"];
+
+/* ------------------------- Dashboard ------------------------- */
+export function DashboardScreen() {
+  const kpis = [
+    { label: "Sesiones activas", value: "12", icon: Activity, accent: "text-emerald-600" },
+    { label: "Participantes hoy", value: "184", icon: Users, accent: "text-primary" },
+    { label: "Pendientes de revisión", value: "7", icon: ListChecks, accent: "text-amber-600" },
+    { label: "Intentos completados", value: "1,254", icon: CheckCircle2, accent: "text-primary" },
+  ];
+  const data = Array.from({ length: 7 }, (_, i) => ({ d: `D${i + 1}`, c: 30 + Math.round(Math.random() * 60) }));
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {kpis.map((k) => (
+          <Card key={k.label} className="border-0 shadow-sm">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-muted-foreground">{k.label}</div>
+                <k.icon className={`h-4 w-4 ${k.accent}`} />
+              </div>
+              <div className="text-3xl font-semibold mt-2">{k.value}</div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid lg:grid-cols-3 gap-4">
+        <Card className="lg:col-span-2 border-0 shadow-sm">
+          <CardHeader><CardTitle>Actividad semanal</CardTitle><CardDescription>Intentos completados por día</CardDescription></CardHeader>
+          <CardContent className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="d" /><YAxis /><Tooltip />
+                <Bar dataKey="c" fill="#0f2649" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+        <Card className="border-0 shadow-sm">
+          <CardHeader><CardTitle>Próximas sesiones</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            {["SES-2026-06-A · Psicología I", "SES-2026-06-B · Selección RRHH", "SES-2026-06-C · Reevaluación"].map((s, i) => (
+              <div key={i} className="flex items-center gap-3 p-3 rounded border">
+                <div className="h-9 w-9 rounded bg-accent text-primary flex items-center justify-center"><Calendar className="h-4 w-4" /></div>
+                <div className="flex-1 text-sm">
+                  <div className="font-medium">{s}</div>
+                  <div className="text-xs text-muted-foreground">Hoy · 14:00</div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------- Session Create (Aplicador) ------------------------- */
+export function SessionCreateScreen() {
+  const [subtests, setSubtests] = useState<Record<string, boolean>>({ figuras: true, desplazamiento: true, espacial: false });
+  const [participants, setParticipants] = useState<string[]>(["Ana M. Pérez", "Carlos Rodríguez", "Sofía Núñez"]);
+  const [generated, setGenerated] = useState(false);
+
+  return (
+    <div className="grid lg:grid-cols-3 gap-4">
+      <div className="lg:col-span-2 space-y-4">
+        <Card className="border-0 shadow-sm">
+          <CardHeader><CardTitle>Datos de la sesión</CardTitle><CardDescription>Configure la sesión a aplicar.</CardDescription></CardHeader>
+          <CardContent className="grid md:grid-cols-2 gap-4">
+            <Field label="Nombre de sesión"><Input defaultValue="SES-2026-06-D · Psicología III" /></Field>
+            <Field label="Grupo / carrera"><Input defaultValue="Psicología — 3er año" /></Field>
+            <Field label="Fecha"><Input type="date" defaultValue="2026-06-10" /></Field>
+            <Field label="Hora de apertura"><Input type="time" defaultValue="14:00" /></Field>
+            <Field label="Ubicación"><Input defaultValue="Laboratorio cognitivo · UAM" /></Field>
+            <Field label="Aplicador">
+              <Select defaultValue="ap1"><SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ap1">Dra. L. Hernández</SelectItem>
+                  <SelectItem value="ap2">Lic. J. Martínez</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm">
+          <CardHeader><CardTitle>Subtests habilitados</CardTitle><CardDescription>Solo los marcados se mostrarán al participante.</CardDescription></CardHeader>
+          <CardContent className="space-y-3">
+            {[
+              { id: "figuras", name: "Figuras idénticas", v: "v2.1" },
+              { id: "desplazamiento", name: "Desplazamiento", v: "v1.4" },
+              { id: "espacial", name: "Espacial", v: "v1.2" },
+            ].map((s) => (
+              <label key={s.id} className="flex items-center gap-3 rounded border p-3 cursor-pointer hover:bg-muted/50">
+                <Checkbox checked={subtests[s.id]} onCheckedChange={(v) => setSubtests((p) => ({ ...p, [s.id]: !!v }))} />
+                <div className="flex-1">
+                  <div className="font-medium">{s.name}</div>
+                  <div className="text-xs text-muted-foreground">Versión publicada {s.v}</div>
+                </div>
+                <Badge variant="secondary"><Lock className="h-3 w-3 mr-1" /> publicada</Badge>
+              </label>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div><CardTitle>Participantes asignados</CardTitle><CardDescription>{participants.length} asignados</CardDescription></div>
+            <Button variant="outline" size="sm"><Plus className="h-4 w-4 mr-1" /> Asignar</Button>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {participants.map((p) => (
+                <div key={p} className="flex items-center gap-3 p-2 rounded border">
+                  <Avatar className="h-8 w-8"><AvatarFallback className="bg-accent text-primary text-xs">{p.split(" ").map((x) => x[0]).slice(0, 2).join("")}</AvatarFallback></Avatar>
+                  <div className="flex-1 text-sm">{p}</div>
+                  <Button variant="ghost" size="icon" onClick={() => setParticipants((l) => l.filter((x) => x !== p))}><Trash2 className="h-4 w-4" /></Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="space-y-4">
+        <Card className="border-0 shadow-sm">
+          <CardHeader><CardTitle>Generar acceso</CardTitle><CardDescription>Tokens únicos para cada participante.</CardDescription></CardHeader>
+          <CardContent className="space-y-3">
+            <Button className="w-full" onClick={() => setGenerated(true)}><KeyRound className="h-4 w-4 mr-1" /> Generar tokens</Button>
+            {generated && (
+              <div className="space-y-2">
+                {participants.map((p, i) => {
+                  const token = `bfa.uam/e/${(Math.random().toString(36).slice(2, 6) + i).padEnd(8, "0")}`;
+                  return (
+                    <div key={p} className="rounded border p-2 text-sm">
+                      <div className="text-xs text-muted-foreground">{p}</div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <code className="flex-1 truncate text-xs bg-muted px-2 py-1 rounded">{token}</code>
+                        <Button variant="ghost" size="icon"><Copy className="h-4 w-4" /></Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        <Alert>
+          <ShieldCheck className="h-4 w-4" />
+          <AlertTitle>Confidencialidad</AlertTitle>
+          <AlertDescription>Cada token es de un solo uso y caduca al cerrar la sesión.</AlertDescription>
+        </Alert>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------- Sessions Monitor ------------------------- */
+export function SessionsMonitorScreen() {
+  const sessions = [
+    { id: "P-0184", name: "Ana M. Pérez", subtest: "Figuras idénticas", progress: 60, state: "en-progreso" },
+    { id: "P-0185", name: "Carlos Rodríguez", subtest: "—", progress: 0, state: "no-iniciado" },
+    { id: "P-0186", name: "Sofía Núñez", subtest: "Espacial", progress: 100, state: "completado" },
+    { id: "P-0187", name: "Luis García", subtest: "Desplazamiento", progress: 40, state: "interrumpido" },
+    { id: "P-0188", name: "Marta López", subtest: "—", progress: 0, state: "anulado" },
+  ];
+  return (
+    <Card className="border-0 shadow-sm">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div><CardTitle>SES-2026-06-A · Psicología I</CardTitle><CardDescription>Monitor en tiempo real</CardDescription></div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm"><RotateCw className="h-4 w-4 mr-1" /> Refrescar</Button>
+          <Button variant="outline" size="sm"><Filter className="h-4 w-4 mr-1" /> Filtros</Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Participante</TableHead><TableHead>Subtest actual</TableHead><TableHead>Progreso</TableHead><TableHead>Estado</TableHead><TableHead>Última act.</TableHead><TableHead className="w-10" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sessions.map((s) => (
+              <TableRow key={s.id}>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <Avatar className="h-7 w-7"><AvatarFallback className="bg-accent text-primary text-xs">{s.name.split(" ").map((x) => x[0]).slice(0, 2).join("")}</AvatarFallback></Avatar>
+                    <div>
+                      <div className="text-sm font-medium">{s.name}</div>
+                      <div className="text-xs text-muted-foreground">{s.id}</div>
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>{s.subtest}</TableCell>
+                <TableCell><div className="w-40"><Progress value={s.progress} /></div></TableCell>
+                <TableCell><StateBadge s={s.state} /></TableCell>
+                <TableCell className="text-sm text-muted-foreground">hace 2 min</TableCell>
+                <TableCell><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
+
+function StateBadge({ s }: { s: string }) {
+  const map: any = {
+    "no-iniciado": ["bg-slate-100 text-slate-700", "No iniciado"],
+    "en-progreso": ["bg-blue-100 text-blue-800", "En progreso"],
+    "completado": ["bg-emerald-100 text-emerald-800", "Completado"],
+    "interrumpido": ["bg-amber-100 text-amber-800", "Interrumpido"],
+    "anulado": ["bg-rose-100 text-rose-800", "Anulado"],
+  };
+  const [cls, lbl] = map[s] ?? ["bg-muted", s];
+  return <Badge className={`${cls} hover:${cls}`}>{lbl}</Badge>;
+}
+
+/* ------------------------- Participants ------------------------- */
+export function ParticipantsScreen() {
+  const [open, setOpen] = useState(false);
+  const list = [
+    { id: "P-0184", name: "Ana M. Pérez", age: 21, sex: "F", carrera: "Psicología", grupo: "3A" },
+    { id: "P-0185", name: "Carlos Rodríguez", age: 23, sex: "M", carrera: "Medicina", grupo: "5B" },
+    { id: "P-0186", name: "Sofía Núñez", age: 20, sex: "F", carrera: "Psicología", grupo: "3A" },
+    { id: "P-0187", name: "Luis García", age: 22, sex: "M", carrera: "Ingeniería", grupo: "4A" },
+  ];
+  return (
+    <Card className="border-0 shadow-sm">
+      <CardHeader className="flex flex-row items-center justify-between gap-2">
+        <div><CardTitle>Participantes</CardTitle><CardDescription>Listado e información demográfica</CardDescription></div>
+        <div className="flex gap-2">
+          <div className="relative">
+            <Search className="h-4 w-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input placeholder="Buscar…" className="pl-8" />
+          </div>
+          <Select defaultValue="all">
+            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas las carreras</SelectItem>
+              <SelectItem value="psi">Psicología</SelectItem>
+              <SelectItem value="med">Medicina</SelectItem>
+            </SelectContent>
+          </Select>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-1" /> Nuevo</Button></DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Registrar participante</DialogTitle><DialogDescription>La información es confidencial.</DialogDescription></DialogHeader>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Código"><Input placeholder="P-XXXX" /></Field>
+                <Field label="Nombre completo"><Input /></Field>
+                <Field label="Edad"><Input type="number" /></Field>
+                <Field label="Sexo">
+                  <Select><SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                    <SelectContent><SelectItem value="f">Femenino</SelectItem><SelectItem value="m">Masculino</SelectItem><SelectItem value="o">Otro</SelectItem></SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Carrera"><Input /></Field>
+                <Field label="Grupo"><Input /></Field>
+              </div>
+              <DialogFooter><Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={() => setOpen(false)}>Guardar</Button></DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Código</TableHead><TableHead>Nombre</TableHead><TableHead>Edad</TableHead><TableHead>Sexo</TableHead><TableHead>Carrera</TableHead><TableHead>Grupo</TableHead><TableHead className="w-10" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {list.map((p) => (
+              <TableRow key={p.id}>
+                <TableCell className="font-mono text-xs">{p.id}</TableCell>
+                <TableCell>{p.name}</TableCell>
+                <TableCell>{p.age}</TableCell>
+                <TableCell>{p.sex}</TableCell>
+                <TableCell>{p.carrera}</TableCell>
+                <TableCell><Badge variant="secondary">{p.grupo}</Badge></TableCell>
+                <TableCell><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ------------------------- Instruments Config ------------------------- */
+export function InstrumentsScreen() {
+  const versions = [
+    { v: "v2.1", status: "publicada", date: "2026-05-10" },
+    { v: "v2.0", status: "histórica", date: "2025-11-20" },
+    { v: "v2.2", status: "borrador", date: "2026-06-01" },
+  ];
+  return (
+    <div className="space-y-4">
+      <Alert>
+        <Lock className="h-4 w-4" />
+        <AlertTitle>Versiones publicadas bloqueadas</AlertTitle>
+        <AlertDescription>Las versiones publicadas no pueden modificarse. Para realizar cambios, cree una nueva versión.</AlertDescription>
+      </Alert>
+
+      <div className="grid lg:grid-cols-4 gap-4">
+        <Card className="border-0 shadow-sm">
+          <CardHeader><CardTitle>BFA</CardTitle><CardDescription>Batería de Funciones Atencionales</CardDescription></CardHeader>
+          <CardContent className="space-y-2">
+            {versions.map((v) => (
+              <button key={v.v} className="w-full flex items-center justify-between p-2 rounded border hover:bg-muted text-left">
+                <div>
+                  <div className="font-medium text-sm">{v.v}</div>
+                  <div className="text-xs text-muted-foreground">{v.date}</div>
+                </div>
+                {v.status === "publicada" ? <Badge><Lock className="h-3 w-3 mr-1" /> publicada</Badge>
+                  : v.status === "borrador" ? <Badge variant="secondary"><Unlock className="h-3 w-3 mr-1" /> borrador</Badge>
+                  : <Badge variant="outline">histórica</Badge>}
+              </button>
+            ))}
+            <Button variant="outline" className="w-full mt-2" size="sm"><Plus className="h-4 w-4 mr-1" /> Nueva versión</Button>
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-3 border-0 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div><CardTitle>v2.2 · Borrador</CardTitle><CardDescription>Edición de subtests, ítems y claves</CardDescription></div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm"><Eye className="h-4 w-4 mr-1" /> Vista previa</Button>
+              <Button size="sm"><CheckCircle2 className="h-4 w-4 mr-1" /> Publicar versión</Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Tabs defaultValue="figuras">
+              <TabsList>
+                <TabsTrigger value="figuras">Figuras idénticas</TabsTrigger>
+                <TabsTrigger value="desplazamiento">Desplazamiento</TabsTrigger>
+                <TabsTrigger value="espacial">Espacial</TabsTrigger>
+              </TabsList>
+              <TabsContent value="figuras" className="space-y-3 mt-4">
+                <div className="grid md:grid-cols-3 gap-3">
+                  <Field label="Tiempo límite (min)"><Input type="number" defaultValue="8" /></Field>
+                  <Field label="Total ítems"><Input type="number" defaultValue="30" /></Field>
+                  <Field label="Puntaje por ítem"><Input type="number" defaultValue="1" /></Field>
+                </div>
+                <Separator />
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>#</TableHead><TableHead>Enunciado</TableHead><TableHead>Tipo</TableHead><TableHead>Opciones</TableHead><TableHead>Clave</TableHead><TableHead>Puntaje</TableHead><TableHead className="w-10" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <TableRow key={i}>
+                        <TableCell>{i}</TableCell>
+                        <TableCell className="max-w-xs truncate">Seleccione la figura idéntica al modelo</TableCell>
+                        <TableCell><Badge variant="secondary">imagen</Badge></TableCell>
+                        <TableCell>A · B · C · D</TableCell>
+                        <TableCell><Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100"><KeyRound className="h-3 w-3 mr-1" /> confidencial</Badge></TableCell>
+                        <TableCell>1</TableCell>
+                        <TableCell><Button variant="ghost" size="icon"><Pencil className="h-4 w-4" /></Button></TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <Button variant="outline" size="sm"><Plus className="h-4 w-4 mr-1" /> Agregar ítem</Button>
+              </TabsContent>
+              <TabsContent value="desplazamiento" className="text-sm text-muted-foreground mt-4">Estructura equivalente para subtest Desplazamiento.</TabsContent>
+              <TabsContent value="espacial" className="text-sm text-muted-foreground mt-4">Estructura equivalente para subtest Espacial.</TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------- Image Upload ------------------------- */
+export function ImageUploadScreen() {
+  const items = [
+    { id: 1, name: "fig-modelo-001.png", sub: "Figuras idénticas", size: "82 KB" },
+    { id: 2, name: "fig-opcion-001a.png", sub: "Figuras idénticas", size: "44 KB" },
+    { id: 3, name: "espacial-rot-003.png", sub: "Espacial", size: "98 KB" },
+  ];
+  return (
+    <div className="grid lg:grid-cols-3 gap-4">
+      <Card className="lg:col-span-2 border-0 shadow-sm">
+        <CardHeader><CardTitle>Cargar imágenes confidenciales</CardTitle><CardDescription>Las imágenes se cifran y no se mostrarán al participante con opción de descarga.</CardDescription></CardHeader>
+        <CardContent>
+          <label className="block rounded-lg border-2 border-dashed p-10 text-center cursor-pointer hover:bg-muted/50">
+            <Upload className="h-8 w-8 mx-auto text-primary" />
+            <div className="mt-2 font-medium">Arrastra o haz clic para subir</div>
+            <div className="text-xs text-muted-foreground">PNG, JPG hasta 2MB. Resolución mínima 600×600.</div>
+          </label>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-4">
+            {items.map((it) => (
+              <div key={it.id} className="rounded border p-2">
+                <div className="aspect-square rounded bg-muted flex items-center justify-center"><ImageIcon className="h-8 w-8 text-muted-foreground" /></div>
+                <div className="text-xs mt-2 truncate font-mono">{it.name}</div>
+                <div className="flex items-center justify-between mt-1">
+                  <Badge variant="secondary" className="text-[10px]">{it.sub}</Badge>
+                  <span className="text-[10px] text-muted-foreground">{it.size}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+      <Card className="border-0 shadow-sm">
+        <CardHeader><CardTitle>Metadatos</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <Field label="Subtest"><Select defaultValue="fig"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="fig">Figuras idénticas</SelectItem><SelectItem value="des">Desplazamiento</SelectItem><SelectItem value="esp">Espacial</SelectItem></SelectContent></Select></Field>
+          <Field label="Ítem #"><Input type="number" placeholder="001" /></Field>
+          <Field label="Rol en ítem"><Select defaultValue="modelo"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="modelo">Modelo</SelectItem><SelectItem value="opc">Opción</SelectItem></SelectContent></Select></Field>
+          <Field label="Texto alternativo (interno)"><Textarea rows={2} placeholder="No visible al participante" /></Field>
+          <div className="flex items-center gap-2"><Switch defaultChecked id="lock" /><Label htmlFor="lock" className="text-sm">Bloquear descarga visible</Label></div>
+          <Button className="w-full">Guardar metadatos</Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+/* ------------------------- Review Tray ------------------------- */
+export function ReviewTrayScreen() {
+  const items = [
+    { id: "R-0011", p: "Ana M. Pérez", sub: "Espacial", item: "12", ans: "Cuadrado rotado 90° hacia la izquierda", state: "pendiente" },
+    { id: "R-0012", p: "Luis García", sub: "Desplazamiento", item: "8", ans: "La figura se mueve dos casillas", state: "pendiente" },
+    { id: "R-0013", p: "Sofía Núñez", sub: "Figuras idénticas", item: "21", ans: "No estoy seguro", state: "marcado" },
+  ];
+  return (
+    <Card className="border-0 shadow-sm">
+      <CardHeader><CardTitle>Bandeja de revisión manual</CardTitle><CardDescription>Respuestas abiertas que requieren calificación humana.</CardDescription></CardHeader>
+      <CardContent className="space-y-3">
+        {items.map((r) => (
+          <div key={r.id} className="rounded border p-4 grid md:grid-cols-[1fr_auto] gap-3">
+            <div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground"><Hash className="h-3 w-3" />{r.id} · {r.p} · {r.sub} · ítem {r.item}</div>
+              <div className="mt-2 text-sm bg-muted/50 rounded p-3 italic">"{r.ans}"</div>
+            </div>
+            <div className="flex md:flex-col gap-2 items-start md:items-end">
+              <Badge variant={r.state === "pendiente" ? "secondary" : "outline"}>{r.state}</Badge>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline"><XCircle className="h-4 w-4 mr-1" /> Incorrecta</Button>
+                <Button size="sm"><CheckCircle2 className="h-4 w-4 mr-1" /> Correcta</Button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ------------------------- Individual Results ------------------------- */
+export function ResultsScreen() {
+  const subs = [
+    { name: "Figuras idénticas", total: 30, ok: 24, ko: 6 },
+    { name: "Desplazamiento", total: 24, ok: 18, ko: 6 },
+    { name: "Espacial", total: 20, ok: 15, ko: 5 },
+  ];
+  const totalOk = subs.reduce((a, s) => a + s.ok, 0);
+  const totalKo = subs.reduce((a, s) => a + s.ko, 0);
+  const total = totalOk + totalKo;
+  return (
+    <div className="space-y-4">
+      <Card className="border-0 shadow-sm">
+        <CardContent className="p-6 grid md:grid-cols-[1fr_auto] gap-4 items-center">
+          <div className="flex items-center gap-4">
+            <Avatar className="h-14 w-14"><AvatarFallback className="bg-accent text-primary">AP</AvatarFallback></Avatar>
+            <div>
+              <div className="text-xl font-semibold text-primary">Ana M. Pérez</div>
+              <div className="text-sm text-muted-foreground">P-0184 · Psicología 3A · 21 años · F</div>
+              <div className="text-xs text-muted-foreground mt-1">Sesión SES-2026-06-A · Finalizada el 2026-06-03 14:42</div>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline"><FileText className="h-4 w-4 mr-1" /> Exportar PDF</Button>
+            <Button><Send className="h-4 w-4 mr-1" /> Enviar al participante</Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid md:grid-cols-3 gap-4">
+        <Card className="border-0 shadow-sm">
+          <CardHeader><CardTitle>Puntaje directo total</CardTitle></CardHeader>
+          <CardContent>
+            <div className="text-5xl font-semibold text-primary">{totalOk}<span className="text-muted-foreground text-xl">/{total}</span></div>
+            <Progress className="mt-3" value={(totalOk / total) * 100} />
+          </CardContent>
+        </Card>
+        <Card className="border-0 shadow-sm">
+          <CardHeader><CardTitle>Correctas vs Incorrectas</CardTitle></CardHeader>
+          <CardContent className="h-40">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={[{ n: "Correctas", v: totalOk }, { n: "Incorrectas", v: totalKo }]} dataKey="v" nameKey="n" innerRadius={30} outerRadius={55}>
+                  <Cell fill="#0f2649" /><Cell fill="#b91c1c" />
+                </Pie>
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+        <Card className="border-0 shadow-sm">
+          <CardHeader><CardTitle>Tiempo total</CardTitle></CardHeader>
+          <CardContent>
+            <div className="text-5xl font-semibold text-primary">18:24</div>
+            <div className="text-sm text-muted-foreground mt-1">3 subtests aplicados</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="border-0 shadow-sm">
+        <CardHeader><CardTitle>Detalle por subtest</CardTitle></CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader><TableRow><TableHead>Subtest</TableHead><TableHead>Correctas</TableHead><TableHead>Incorrectas</TableHead><TableHead>Total</TableHead><TableHead>%</TableHead><TableHead>Distribución</TableHead></TableRow></TableHeader>
+            <TableBody>
+              {subs.map((s) => (
+                <TableRow key={s.name}>
+                  <TableCell className="font-medium">{s.name}</TableCell>
+                  <TableCell><Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">{s.ok}</Badge></TableCell>
+                  <TableCell><Badge className="bg-rose-100 text-rose-800 hover:bg-rose-100">{s.ko}</Badge></TableCell>
+                  <TableCell>{s.total}</TableCell>
+                  <TableCell>{Math.round((s.ok / s.total) * 100)}%</TableCell>
+                  <TableCell><div className="w-40"><Progress value={(s.ok / s.total) * 100} /></div></TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+/* ------------------------- Results Dashboard ------------------------- */
+export function ResultsDashboardScreen() {
+  const bySub = [
+    { sub: "Figuras", media: 24.3 }, { sub: "Desplazamiento", media: 17.5 }, { sub: "Espacial", media: 14.1 },
+  ];
+  const byAge = Array.from({ length: 8 }, (_, i) => ({ age: 18 + i, m: 50 + Math.round(Math.random() * 30) }));
+  const bySex = [{ n: "F", v: 312 }, { n: "M", v: 248 }, { n: "Otro", v: 14 }];
+
+  return (
+    <div className="space-y-4">
+      <Card className="border-0 shadow-sm">
+        <CardContent className="p-4 flex flex-wrap gap-3 items-end">
+          <Field label="Sesión"><Select defaultValue="a"><SelectTrigger className="w-48"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="a">Todas</SelectItem><SelectItem value="b">SES-2026-06-A</SelectItem></SelectContent></Select></Field>
+          <Field label="Grupo"><Select defaultValue="a"><SelectTrigger className="w-32"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="a">Todos</SelectItem></SelectContent></Select></Field>
+          <Field label="Carrera"><Select defaultValue="a"><SelectTrigger className="w-40"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="a">Todas</SelectItem></SelectContent></Select></Field>
+          <Field label="Edad"><Input className="w-28" placeholder="18–25" /></Field>
+          <Field label="Sexo"><Select defaultValue="a"><SelectTrigger className="w-28"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="a">Todos</SelectItem></SelectContent></Select></Field>
+          <Field label="Subtest"><Select defaultValue="a"><SelectTrigger className="w-40"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="a">Todos</SelectItem></SelectContent></Select></Field>
+          <div className="ml-auto flex gap-2"><Button variant="outline"><Filter className="h-4 w-4 mr-1" /> Aplicar</Button></div>
+        </CardContent>
+      </Card>
+
+      <div className="grid lg:grid-cols-3 gap-4">
+        <Card className="border-0 shadow-sm">
+          <CardHeader><CardTitle>Media por subtest</CardTitle></CardHeader>
+          <CardContent className="h-64">
+            <ResponsiveContainer><BarChart data={bySub}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="sub" /><YAxis /><Tooltip /><Bar dataKey="media" fill="#0f2649" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer>
+          </CardContent>
+        </Card>
+        <Card className="border-0 shadow-sm">
+          <CardHeader><CardTitle>Tendencia por edad</CardTitle></CardHeader>
+          <CardContent className="h-64">
+            <ResponsiveContainer><LineChart data={byAge}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="age" /><YAxis /><Tooltip /><Line type="monotone" dataKey="m" stroke="#b91c1c" strokeWidth={2} /></LineChart></ResponsiveContainer>
+          </CardContent>
+        </Card>
+        <Card className="border-0 shadow-sm">
+          <CardHeader><CardTitle>Distribución por sexo</CardTitle></CardHeader>
+          <CardContent className="h-64">
+            <ResponsiveContainer><PieChart><Pie data={bySex} dataKey="v" nameKey="n" outerRadius={80}>{bySex.map((_, i) => <Cell key={i} fill={COLORS[i]} />)}</Pie><Legend /></PieChart></ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------- Reports Center ------------------------- */
+export function ReportsScreen() {
+  const reports = [
+    { name: "Resultados individuales", desc: "Detalle por participante con puntajes y subtests.", icon: FileText },
+    { name: "Resultados agregados", desc: "Resumen estadístico filtrable por grupo y carrera.", icon: FileBarChart },
+    { name: "Auditoría de sesiones", desc: "Eventos por sesión: inicio, fin, interrupciones.", icon: ShieldCheck },
+    { name: "Inventario de instrumentos", desc: "Versiones publicadas y subtests activos.", icon: ClipboardList },
+  ];
+  return (
+    <div className="grid md:grid-cols-2 gap-4">
+      {reports.map((r) => (
+        <Card key={r.name} className="border-0 shadow-sm">
+          <CardContent className="p-5 flex gap-4 items-start">
+            <div className="h-12 w-12 rounded bg-accent text-primary flex items-center justify-center"><r.icon className="h-5 w-5" /></div>
+            <div className="flex-1">
+              <div className="font-medium">{r.name}</div>
+              <div className="text-sm text-muted-foreground">{r.desc}</div>
+              <div className="mt-3 flex gap-2">
+                <Button size="sm" variant="outline"><FileText className="h-4 w-4 mr-1" /> PDF</Button>
+                <Button size="sm" variant="outline"><FileSpreadsheet className="h-4 w-4 mr-1" /> Excel</Button>
+                <Button size="sm" variant="outline"><Download className="h-4 w-4 mr-1" /> CSV</Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+/* ------------------------- Audit ------------------------- */
+export function AuditScreen() {
+  const events = [
+    { d: "2026-06-03 14:42", u: "lic.martinez", a: "Finalizó intento", e: "intento_test:9821", ip: "190.124.10.4" },
+    { d: "2026-06-03 14:21", u: "dra.hernandez", a: "Generó tokens", e: "sesion:SES-2026-06-A", ip: "190.124.10.4" },
+    { d: "2026-06-03 13:55", u: "admin", a: "Publicó versión", e: "test:BFA v2.1", ip: "192.168.1.20" },
+    { d: "2026-06-03 13:10", u: "consultor1", a: "Exportó reporte", e: "reporte:agregado", ip: "190.124.10.9" },
+  ];
+  return (
+    <Card className="border-0 shadow-sm">
+      <CardHeader className="flex flex-row items-center justify-between gap-2">
+        <div><CardTitle>Auditoría</CardTitle><CardDescription>Registro inmutable de acciones del sistema.</CardDescription></div>
+        <div className="flex gap-2 flex-wrap">
+          <Input placeholder="Usuario" className="w-32" />
+          <Input placeholder="Acción" className="w-32" />
+          <Input type="date" className="w-40" />
+          <Input placeholder="IP" className="w-32" />
+          <Button variant="outline"><Filter className="h-4 w-4 mr-1" /> Filtrar</Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader><TableRow><TableHead>Fecha</TableHead><TableHead>Usuario</TableHead><TableHead>Acción</TableHead><TableHead>Entidad</TableHead><TableHead>IP</TableHead></TableRow></TableHeader>
+          <TableBody>
+            {events.map((e, i) => (
+              <TableRow key={i}>
+                <TableCell className="font-mono text-xs">{e.d}</TableCell>
+                <TableCell>{e.u}</TableCell>
+                <TableCell><Badge variant="secondary">{e.a}</Badge></TableCell>
+                <TableCell className="font-mono text-xs">{e.e}</TableCell>
+                <TableCell className="font-mono text-xs">{e.ip}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ------------------------- Users & Roles ------------------------- */
+export function UsersScreen() {
+  const users = [
+    { n: "Dra. L. Hernández", e: "lhernandez@uam.edu.ni", r: "Psicólogo", s: true },
+    { n: "Lic. J. Martínez", e: "jmartinez@uam.edu.ni", r: "Aplicador", s: true },
+    { n: "Carlos Ruiz", e: "cruiz@uam.edu.ni", r: "Consultor", s: false },
+    { n: "Admin UAM", e: "admin@uam.edu.ni", r: "Administrador", s: true },
+  ];
+  const perms = [
+    { k: "Aplicar tests", roles: ["Aplicador", "Psicólogo", "Administrador"] },
+    { k: "Configurar instrumentos", roles: ["Psicólogo", "Administrador"] },
+    { k: "Ver resultados", roles: ["Psicólogo", "Consultor", "Administrador"] },
+    { k: "Gestionar usuarios", roles: ["Administrador"] },
+    { k: "Acceder a auditoría", roles: ["Administrador"] },
+  ];
+  return (
+    <div className="grid lg:grid-cols-3 gap-4">
+      <Card className="lg:col-span-2 border-0 shadow-sm">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div><CardTitle>Usuarios</CardTitle><CardDescription>Personal interno con acceso al sistema.</CardDescription></div>
+          <Button><Plus className="h-4 w-4 mr-1" /> Nuevo usuario</Button>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader><TableRow><TableHead>Nombre</TableHead><TableHead>Correo</TableHead><TableHead>Rol</TableHead><TableHead>Estado</TableHead><TableHead className="w-10" /></TableRow></TableHeader>
+            <TableBody>
+              {users.map((u) => (
+                <TableRow key={u.e}>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-7 w-7"><AvatarFallback className="bg-accent text-primary text-xs">{u.n.split(" ").map((x) => x[0]).slice(0, 2).join("")}</AvatarFallback></Avatar>
+                      <span className="text-sm font-medium">{u.n}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{u.e}</TableCell>
+                  <TableCell><Badge variant="secondary">{u.r}</Badge></TableCell>
+                  <TableCell>{u.s ? <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">activo</Badge> : <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100">inactivo</Badge>}</TableCell>
+                  <TableCell><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+      <Card className="border-0 shadow-sm">
+        <CardHeader><CardTitle>Matriz de permisos</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          {perms.map((p) => (
+            <div key={p.k}>
+              <div className="text-sm font-medium">{p.k}</div>
+              <div className="mt-1 flex flex-wrap gap-1">{p.roles.map((r) => <Badge key={r} variant="secondary" className="text-[10px]">{r}</Badge>)}</div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      {children}
+    </div>
+  );
+}
