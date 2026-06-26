@@ -9,38 +9,509 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SesionVencidaRouteImport } from './routes/sesion-vencida'
+import { Route as NoAutorizadoRouteImport } from './routes/no-autorizado'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as ErrorRouteImport } from './routes/error'
+import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as EvaluacionAccesoRouteImport } from './routes/evaluacion/acceso'
+import { Route as EvaluacionTokenRouteImport } from './routes/evaluacion/$token'
+import { Route as AppUsuariosRouteImport } from './routes/app/usuarios'
+import { Route as AppSesionesRouteImport } from './routes/app/sesiones'
+import { Route as AppRolesRouteImport } from './routes/app/roles'
+import { Route as AppRevisionManualRouteImport } from './routes/app/revision-manual'
+import { Route as AppResultadosRouteImport } from './routes/app/resultados'
+import { Route as AppRespaldosRouteImport } from './routes/app/respaldos'
+import { Route as AppReportesRouteImport } from './routes/app/reportes'
+import { Route as AppParticipantesRouteImport } from './routes/app/participantes'
+import { Route as AppInstrumentosRouteImport } from './routes/app/instrumentos'
+import { Route as AppDashboardResultadosRouteImport } from './routes/app/dashboard-resultados'
+import { Route as AppDashboardRouteImport } from './routes/app/dashboard'
+import { Route as AppCargaImagenesRouteImport } from './routes/app/carga-imagenes'
+import { Route as AppAuditoriaRouteImport } from './routes/app/auditoria'
+import { Route as EvaluacionTokenIndexRouteImport } from './routes/evaluacion/$token/index'
+import { Route as AppSesionesIndexRouteImport } from './routes/app/sesiones.index'
+import { Route as EvaluacionTokenResumenRouteImport } from './routes/evaluacion/$token/resumen'
+import { Route as EvaluacionTokenCompletadaRouteImport } from './routes/evaluacion/$token/completada'
+import { Route as EvaluacionTokenBienvenidaRouteImport } from './routes/evaluacion/$token/bienvenida'
+import { Route as AppSesionesNuevaRouteImport } from './routes/app/sesiones.nueva'
+import { Route as AppSesionesIdRouteImport } from './routes/app/sesiones.$id'
+import { Route as AppParticipantesIdRouteImport } from './routes/app/participantes.$id'
+import { Route as AppInstrumentosVersionIdRouteImport } from './routes/app/instrumentos.$versionId'
+import { Route as EvaluacionTokenSubtestsIndexRouteImport } from './routes/evaluacion/$token/subtests.index'
+import { Route as AppSesionesIdAsignacionesRouteImport } from './routes/app/sesiones.$id.asignaciones'
+import { Route as AppResultadosIndividualResultadoIdRouteImport } from './routes/app/resultados.individual.$resultadoId'
+import { Route as EvaluacionTokenSubtestsSubtestIdInstruccionesRouteImport } from './routes/evaluacion/$token/subtests.$subtestId.instrucciones'
+import { Route as AppInstrumentosVersionIdSubtestsSubtestIdRouteImport } from './routes/app/instrumentos.$versionId.subtests.$subtestId'
+import { Route as EvaluacionTokenSubtestsSubtestIdItemsItemIdRouteImport } from './routes/evaluacion/$token/subtests.$subtestId.items.$itemId'
 
+const SesionVencidaRoute = SesionVencidaRouteImport.update({
+  id: '/sesion-vencida',
+  path: '/sesion-vencida',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NoAutorizadoRoute = NoAutorizadoRouteImport.update({
+  id: '/no-autorizado',
+  path: '/no-autorizado',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ErrorRoute = ErrorRouteImport.update({
+  id: '/error',
+  path: '/error',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppRoute = AppRouteImport.update({
+  id: '/app',
+  path: '/app',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EvaluacionAccesoRoute = EvaluacionAccesoRouteImport.update({
+  id: '/evaluacion/acceso',
+  path: '/evaluacion/acceso',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EvaluacionTokenRoute = EvaluacionTokenRouteImport.update({
+  id: '/evaluacion/$token',
+  path: '/evaluacion/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppUsuariosRoute = AppUsuariosRouteImport.update({
+  id: '/usuarios',
+  path: '/usuarios',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSesionesRoute = AppSesionesRouteImport.update({
+  id: '/sesiones',
+  path: '/sesiones',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRolesRoute = AppRolesRouteImport.update({
+  id: '/roles',
+  path: '/roles',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRevisionManualRoute = AppRevisionManualRouteImport.update({
+  id: '/revision-manual',
+  path: '/revision-manual',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppResultadosRoute = AppResultadosRouteImport.update({
+  id: '/resultados',
+  path: '/resultados',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRespaldosRoute = AppRespaldosRouteImport.update({
+  id: '/respaldos',
+  path: '/respaldos',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppReportesRoute = AppReportesRouteImport.update({
+  id: '/reportes',
+  path: '/reportes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppParticipantesRoute = AppParticipantesRouteImport.update({
+  id: '/participantes',
+  path: '/participantes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppInstrumentosRoute = AppInstrumentosRouteImport.update({
+  id: '/instrumentos',
+  path: '/instrumentos',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDashboardResultadosRoute = AppDashboardResultadosRouteImport.update({
+  id: '/dashboard-resultados',
+  path: '/dashboard-resultados',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDashboardRoute = AppDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCargaImagenesRoute = AppCargaImagenesRouteImport.update({
+  id: '/carga-imagenes',
+  path: '/carga-imagenes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAuditoriaRoute = AppAuditoriaRouteImport.update({
+  id: '/auditoria',
+  path: '/auditoria',
+  getParentRoute: () => AppRoute,
+} as any)
+const EvaluacionTokenIndexRoute = EvaluacionTokenIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => EvaluacionTokenRoute,
+} as any)
+const AppSesionesIndexRoute = AppSesionesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppSesionesRoute,
+} as any)
+const EvaluacionTokenResumenRoute = EvaluacionTokenResumenRouteImport.update({
+  id: '/resumen',
+  path: '/resumen',
+  getParentRoute: () => EvaluacionTokenRoute,
+} as any)
+const EvaluacionTokenCompletadaRoute =
+  EvaluacionTokenCompletadaRouteImport.update({
+    id: '/completada',
+    path: '/completada',
+    getParentRoute: () => EvaluacionTokenRoute,
+  } as any)
+const EvaluacionTokenBienvenidaRoute =
+  EvaluacionTokenBienvenidaRouteImport.update({
+    id: '/bienvenida',
+    path: '/bienvenida',
+    getParentRoute: () => EvaluacionTokenRoute,
+  } as any)
+const AppSesionesNuevaRoute = AppSesionesNuevaRouteImport.update({
+  id: '/nueva',
+  path: '/nueva',
+  getParentRoute: () => AppSesionesRoute,
+} as any)
+const AppSesionesIdRoute = AppSesionesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppSesionesRoute,
+} as any)
+const AppParticipantesIdRoute = AppParticipantesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppParticipantesRoute,
+} as any)
+const AppInstrumentosVersionIdRoute =
+  AppInstrumentosVersionIdRouteImport.update({
+    id: '/$versionId',
+    path: '/$versionId',
+    getParentRoute: () => AppInstrumentosRoute,
+  } as any)
+const EvaluacionTokenSubtestsIndexRoute =
+  EvaluacionTokenSubtestsIndexRouteImport.update({
+    id: '/subtests/',
+    path: '/subtests/',
+    getParentRoute: () => EvaluacionTokenRoute,
+  } as any)
+const AppSesionesIdAsignacionesRoute =
+  AppSesionesIdAsignacionesRouteImport.update({
+    id: '/asignaciones',
+    path: '/asignaciones',
+    getParentRoute: () => AppSesionesIdRoute,
+  } as any)
+const AppResultadosIndividualResultadoIdRoute =
+  AppResultadosIndividualResultadoIdRouteImport.update({
+    id: '/individual/$resultadoId',
+    path: '/individual/$resultadoId',
+    getParentRoute: () => AppResultadosRoute,
+  } as any)
+const EvaluacionTokenSubtestsSubtestIdInstruccionesRoute =
+  EvaluacionTokenSubtestsSubtestIdInstruccionesRouteImport.update({
+    id: '/subtests/$subtestId/instrucciones',
+    path: '/subtests/$subtestId/instrucciones',
+    getParentRoute: () => EvaluacionTokenRoute,
+  } as any)
+const AppInstrumentosVersionIdSubtestsSubtestIdRoute =
+  AppInstrumentosVersionIdSubtestsSubtestIdRouteImport.update({
+    id: '/subtests/$subtestId',
+    path: '/subtests/$subtestId',
+    getParentRoute: () => AppInstrumentosVersionIdRoute,
+  } as any)
+const EvaluacionTokenSubtestsSubtestIdItemsItemIdRoute =
+  EvaluacionTokenSubtestsSubtestIdItemsItemIdRouteImport.update({
+    id: '/subtests/$subtestId/items/$itemId',
+    path: '/subtests/$subtestId/items/$itemId',
+    getParentRoute: () => EvaluacionTokenRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/app': typeof AppRouteWithChildren
+  '/error': typeof ErrorRoute
+  '/login': typeof LoginRoute
+  '/no-autorizado': typeof NoAutorizadoRoute
+  '/sesion-vencida': typeof SesionVencidaRoute
+  '/app/auditoria': typeof AppAuditoriaRoute
+  '/app/carga-imagenes': typeof AppCargaImagenesRoute
+  '/app/dashboard': typeof AppDashboardRoute
+  '/app/dashboard-resultados': typeof AppDashboardResultadosRoute
+  '/app/instrumentos': typeof AppInstrumentosRouteWithChildren
+  '/app/participantes': typeof AppParticipantesRouteWithChildren
+  '/app/reportes': typeof AppReportesRoute
+  '/app/respaldos': typeof AppRespaldosRoute
+  '/app/resultados': typeof AppResultadosRouteWithChildren
+  '/app/revision-manual': typeof AppRevisionManualRoute
+  '/app/roles': typeof AppRolesRoute
+  '/app/sesiones': typeof AppSesionesRouteWithChildren
+  '/app/usuarios': typeof AppUsuariosRoute
+  '/evaluacion/$token': typeof EvaluacionTokenRouteWithChildren
+  '/evaluacion/acceso': typeof EvaluacionAccesoRoute
+  '/app/instrumentos/$versionId': typeof AppInstrumentosVersionIdRouteWithChildren
+  '/app/participantes/$id': typeof AppParticipantesIdRoute
+  '/app/sesiones/$id': typeof AppSesionesIdRouteWithChildren
+  '/app/sesiones/nueva': typeof AppSesionesNuevaRoute
+  '/evaluacion/$token/bienvenida': typeof EvaluacionTokenBienvenidaRoute
+  '/evaluacion/$token/completada': typeof EvaluacionTokenCompletadaRoute
+  '/evaluacion/$token/resumen': typeof EvaluacionTokenResumenRoute
+  '/app/sesiones/': typeof AppSesionesIndexRoute
+  '/evaluacion/$token/': typeof EvaluacionTokenIndexRoute
+  '/app/resultados/individual/$resultadoId': typeof AppResultadosIndividualResultadoIdRoute
+  '/app/sesiones/$id/asignaciones': typeof AppSesionesIdAsignacionesRoute
+  '/evaluacion/$token/subtests/': typeof EvaluacionTokenSubtestsIndexRoute
+  '/app/instrumentos/$versionId/subtests/$subtestId': typeof AppInstrumentosVersionIdSubtestsSubtestIdRoute
+  '/evaluacion/$token/subtests/$subtestId/instrucciones': typeof EvaluacionTokenSubtestsSubtestIdInstruccionesRoute
+  '/evaluacion/$token/subtests/$subtestId/items/$itemId': typeof EvaluacionTokenSubtestsSubtestIdItemsItemIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/app': typeof AppRouteWithChildren
+  '/error': typeof ErrorRoute
+  '/login': typeof LoginRoute
+  '/no-autorizado': typeof NoAutorizadoRoute
+  '/sesion-vencida': typeof SesionVencidaRoute
+  '/app/auditoria': typeof AppAuditoriaRoute
+  '/app/carga-imagenes': typeof AppCargaImagenesRoute
+  '/app/dashboard': typeof AppDashboardRoute
+  '/app/dashboard-resultados': typeof AppDashboardResultadosRoute
+  '/app/instrumentos': typeof AppInstrumentosRouteWithChildren
+  '/app/participantes': typeof AppParticipantesRouteWithChildren
+  '/app/reportes': typeof AppReportesRoute
+  '/app/respaldos': typeof AppRespaldosRoute
+  '/app/resultados': typeof AppResultadosRouteWithChildren
+  '/app/revision-manual': typeof AppRevisionManualRoute
+  '/app/roles': typeof AppRolesRoute
+  '/app/usuarios': typeof AppUsuariosRoute
+  '/evaluacion/acceso': typeof EvaluacionAccesoRoute
+  '/app/instrumentos/$versionId': typeof AppInstrumentosVersionIdRouteWithChildren
+  '/app/participantes/$id': typeof AppParticipantesIdRoute
+  '/app/sesiones/$id': typeof AppSesionesIdRouteWithChildren
+  '/app/sesiones/nueva': typeof AppSesionesNuevaRoute
+  '/evaluacion/$token/bienvenida': typeof EvaluacionTokenBienvenidaRoute
+  '/evaluacion/$token/completada': typeof EvaluacionTokenCompletadaRoute
+  '/evaluacion/$token/resumen': typeof EvaluacionTokenResumenRoute
+  '/app/sesiones': typeof AppSesionesIndexRoute
+  '/evaluacion/$token': typeof EvaluacionTokenIndexRoute
+  '/app/resultados/individual/$resultadoId': typeof AppResultadosIndividualResultadoIdRoute
+  '/app/sesiones/$id/asignaciones': typeof AppSesionesIdAsignacionesRoute
+  '/evaluacion/$token/subtests': typeof EvaluacionTokenSubtestsIndexRoute
+  '/app/instrumentos/$versionId/subtests/$subtestId': typeof AppInstrumentosVersionIdSubtestsSubtestIdRoute
+  '/evaluacion/$token/subtests/$subtestId/instrucciones': typeof EvaluacionTokenSubtestsSubtestIdInstruccionesRoute
+  '/evaluacion/$token/subtests/$subtestId/items/$itemId': typeof EvaluacionTokenSubtestsSubtestIdItemsItemIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/app': typeof AppRouteWithChildren
+  '/error': typeof ErrorRoute
+  '/login': typeof LoginRoute
+  '/no-autorizado': typeof NoAutorizadoRoute
+  '/sesion-vencida': typeof SesionVencidaRoute
+  '/app/auditoria': typeof AppAuditoriaRoute
+  '/app/carga-imagenes': typeof AppCargaImagenesRoute
+  '/app/dashboard': typeof AppDashboardRoute
+  '/app/dashboard-resultados': typeof AppDashboardResultadosRoute
+  '/app/instrumentos': typeof AppInstrumentosRouteWithChildren
+  '/app/participantes': typeof AppParticipantesRouteWithChildren
+  '/app/reportes': typeof AppReportesRoute
+  '/app/respaldos': typeof AppRespaldosRoute
+  '/app/resultados': typeof AppResultadosRouteWithChildren
+  '/app/revision-manual': typeof AppRevisionManualRoute
+  '/app/roles': typeof AppRolesRoute
+  '/app/sesiones': typeof AppSesionesRouteWithChildren
+  '/app/usuarios': typeof AppUsuariosRoute
+  '/evaluacion/$token': typeof EvaluacionTokenRouteWithChildren
+  '/evaluacion/acceso': typeof EvaluacionAccesoRoute
+  '/app/instrumentos/$versionId': typeof AppInstrumentosVersionIdRouteWithChildren
+  '/app/participantes/$id': typeof AppParticipantesIdRoute
+  '/app/sesiones/$id': typeof AppSesionesIdRouteWithChildren
+  '/app/sesiones/nueva': typeof AppSesionesNuevaRoute
+  '/evaluacion/$token/bienvenida': typeof EvaluacionTokenBienvenidaRoute
+  '/evaluacion/$token/completada': typeof EvaluacionTokenCompletadaRoute
+  '/evaluacion/$token/resumen': typeof EvaluacionTokenResumenRoute
+  '/app/sesiones/': typeof AppSesionesIndexRoute
+  '/evaluacion/$token/': typeof EvaluacionTokenIndexRoute
+  '/app/resultados/individual/$resultadoId': typeof AppResultadosIndividualResultadoIdRoute
+  '/app/sesiones/$id/asignaciones': typeof AppSesionesIdAsignacionesRoute
+  '/evaluacion/$token/subtests/': typeof EvaluacionTokenSubtestsIndexRoute
+  '/app/instrumentos/$versionId/subtests/$subtestId': typeof AppInstrumentosVersionIdSubtestsSubtestIdRoute
+  '/evaluacion/$token/subtests/$subtestId/instrucciones': typeof EvaluacionTokenSubtestsSubtestIdInstruccionesRoute
+  '/evaluacion/$token/subtests/$subtestId/items/$itemId': typeof EvaluacionTokenSubtestsSubtestIdItemsItemIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/app'
+    | '/error'
+    | '/login'
+    | '/no-autorizado'
+    | '/sesion-vencida'
+    | '/app/auditoria'
+    | '/app/carga-imagenes'
+    | '/app/dashboard'
+    | '/app/dashboard-resultados'
+    | '/app/instrumentos'
+    | '/app/participantes'
+    | '/app/reportes'
+    | '/app/respaldos'
+    | '/app/resultados'
+    | '/app/revision-manual'
+    | '/app/roles'
+    | '/app/sesiones'
+    | '/app/usuarios'
+    | '/evaluacion/$token'
+    | '/evaluacion/acceso'
+    | '/app/instrumentos/$versionId'
+    | '/app/participantes/$id'
+    | '/app/sesiones/$id'
+    | '/app/sesiones/nueva'
+    | '/evaluacion/$token/bienvenida'
+    | '/evaluacion/$token/completada'
+    | '/evaluacion/$token/resumen'
+    | '/app/sesiones/'
+    | '/evaluacion/$token/'
+    | '/app/resultados/individual/$resultadoId'
+    | '/app/sesiones/$id/asignaciones'
+    | '/evaluacion/$token/subtests/'
+    | '/app/instrumentos/$versionId/subtests/$subtestId'
+    | '/evaluacion/$token/subtests/$subtestId/instrucciones'
+    | '/evaluacion/$token/subtests/$subtestId/items/$itemId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/app'
+    | '/error'
+    | '/login'
+    | '/no-autorizado'
+    | '/sesion-vencida'
+    | '/app/auditoria'
+    | '/app/carga-imagenes'
+    | '/app/dashboard'
+    | '/app/dashboard-resultados'
+    | '/app/instrumentos'
+    | '/app/participantes'
+    | '/app/reportes'
+    | '/app/respaldos'
+    | '/app/resultados'
+    | '/app/revision-manual'
+    | '/app/roles'
+    | '/app/usuarios'
+    | '/evaluacion/acceso'
+    | '/app/instrumentos/$versionId'
+    | '/app/participantes/$id'
+    | '/app/sesiones/$id'
+    | '/app/sesiones/nueva'
+    | '/evaluacion/$token/bienvenida'
+    | '/evaluacion/$token/completada'
+    | '/evaluacion/$token/resumen'
+    | '/app/sesiones'
+    | '/evaluacion/$token'
+    | '/app/resultados/individual/$resultadoId'
+    | '/app/sesiones/$id/asignaciones'
+    | '/evaluacion/$token/subtests'
+    | '/app/instrumentos/$versionId/subtests/$subtestId'
+    | '/evaluacion/$token/subtests/$subtestId/instrucciones'
+    | '/evaluacion/$token/subtests/$subtestId/items/$itemId'
+  id:
+    | '__root__'
+    | '/'
+    | '/app'
+    | '/error'
+    | '/login'
+    | '/no-autorizado'
+    | '/sesion-vencida'
+    | '/app/auditoria'
+    | '/app/carga-imagenes'
+    | '/app/dashboard'
+    | '/app/dashboard-resultados'
+    | '/app/instrumentos'
+    | '/app/participantes'
+    | '/app/reportes'
+    | '/app/respaldos'
+    | '/app/resultados'
+    | '/app/revision-manual'
+    | '/app/roles'
+    | '/app/sesiones'
+    | '/app/usuarios'
+    | '/evaluacion/$token'
+    | '/evaluacion/acceso'
+    | '/app/instrumentos/$versionId'
+    | '/app/participantes/$id'
+    | '/app/sesiones/$id'
+    | '/app/sesiones/nueva'
+    | '/evaluacion/$token/bienvenida'
+    | '/evaluacion/$token/completada'
+    | '/evaluacion/$token/resumen'
+    | '/app/sesiones/'
+    | '/evaluacion/$token/'
+    | '/app/resultados/individual/$resultadoId'
+    | '/app/sesiones/$id/asignaciones'
+    | '/evaluacion/$token/subtests/'
+    | '/app/instrumentos/$versionId/subtests/$subtestId'
+    | '/evaluacion/$token/subtests/$subtestId/instrucciones'
+    | '/evaluacion/$token/subtests/$subtestId/items/$itemId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRouteWithChildren
+  ErrorRoute: typeof ErrorRoute
+  LoginRoute: typeof LoginRoute
+  NoAutorizadoRoute: typeof NoAutorizadoRoute
+  SesionVencidaRoute: typeof SesionVencidaRoute
+  EvaluacionTokenRoute: typeof EvaluacionTokenRouteWithChildren
+  EvaluacionAccesoRoute: typeof EvaluacionAccesoRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sesion-vencida': {
+      id: '/sesion-vencida'
+      path: '/sesion-vencida'
+      fullPath: '/sesion-vencida'
+      preLoaderRoute: typeof SesionVencidaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/no-autorizado': {
+      id: '/no-autorizado'
+      path: '/no-autorizado'
+      fullPath: '/no-autorizado'
+      preLoaderRoute: typeof NoAutorizadoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/error': {
+      id: '/error'
+      path: '/error'
+      fullPath: '/error'
+      preLoaderRoute: typeof ErrorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app': {
+      id: '/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +519,367 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/evaluacion/acceso': {
+      id: '/evaluacion/acceso'
+      path: '/evaluacion/acceso'
+      fullPath: '/evaluacion/acceso'
+      preLoaderRoute: typeof EvaluacionAccesoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/evaluacion/$token': {
+      id: '/evaluacion/$token'
+      path: '/evaluacion/$token'
+      fullPath: '/evaluacion/$token'
+      preLoaderRoute: typeof EvaluacionTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app/usuarios': {
+      id: '/app/usuarios'
+      path: '/usuarios'
+      fullPath: '/app/usuarios'
+      preLoaderRoute: typeof AppUsuariosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/sesiones': {
+      id: '/app/sesiones'
+      path: '/sesiones'
+      fullPath: '/app/sesiones'
+      preLoaderRoute: typeof AppSesionesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/roles': {
+      id: '/app/roles'
+      path: '/roles'
+      fullPath: '/app/roles'
+      preLoaderRoute: typeof AppRolesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/revision-manual': {
+      id: '/app/revision-manual'
+      path: '/revision-manual'
+      fullPath: '/app/revision-manual'
+      preLoaderRoute: typeof AppRevisionManualRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/resultados': {
+      id: '/app/resultados'
+      path: '/resultados'
+      fullPath: '/app/resultados'
+      preLoaderRoute: typeof AppResultadosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/respaldos': {
+      id: '/app/respaldos'
+      path: '/respaldos'
+      fullPath: '/app/respaldos'
+      preLoaderRoute: typeof AppRespaldosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/reportes': {
+      id: '/app/reportes'
+      path: '/reportes'
+      fullPath: '/app/reportes'
+      preLoaderRoute: typeof AppReportesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/participantes': {
+      id: '/app/participantes'
+      path: '/participantes'
+      fullPath: '/app/participantes'
+      preLoaderRoute: typeof AppParticipantesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/instrumentos': {
+      id: '/app/instrumentos'
+      path: '/instrumentos'
+      fullPath: '/app/instrumentos'
+      preLoaderRoute: typeof AppInstrumentosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/dashboard-resultados': {
+      id: '/app/dashboard-resultados'
+      path: '/dashboard-resultados'
+      fullPath: '/app/dashboard-resultados'
+      preLoaderRoute: typeof AppDashboardResultadosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/dashboard': {
+      id: '/app/dashboard'
+      path: '/dashboard'
+      fullPath: '/app/dashboard'
+      preLoaderRoute: typeof AppDashboardRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/carga-imagenes': {
+      id: '/app/carga-imagenes'
+      path: '/carga-imagenes'
+      fullPath: '/app/carga-imagenes'
+      preLoaderRoute: typeof AppCargaImagenesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/auditoria': {
+      id: '/app/auditoria'
+      path: '/auditoria'
+      fullPath: '/app/auditoria'
+      preLoaderRoute: typeof AppAuditoriaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/evaluacion/$token/': {
+      id: '/evaluacion/$token/'
+      path: '/'
+      fullPath: '/evaluacion/$token/'
+      preLoaderRoute: typeof EvaluacionTokenIndexRouteImport
+      parentRoute: typeof EvaluacionTokenRoute
+    }
+    '/app/sesiones/': {
+      id: '/app/sesiones/'
+      path: '/'
+      fullPath: '/app/sesiones/'
+      preLoaderRoute: typeof AppSesionesIndexRouteImport
+      parentRoute: typeof AppSesionesRoute
+    }
+    '/evaluacion/$token/resumen': {
+      id: '/evaluacion/$token/resumen'
+      path: '/resumen'
+      fullPath: '/evaluacion/$token/resumen'
+      preLoaderRoute: typeof EvaluacionTokenResumenRouteImport
+      parentRoute: typeof EvaluacionTokenRoute
+    }
+    '/evaluacion/$token/completada': {
+      id: '/evaluacion/$token/completada'
+      path: '/completada'
+      fullPath: '/evaluacion/$token/completada'
+      preLoaderRoute: typeof EvaluacionTokenCompletadaRouteImport
+      parentRoute: typeof EvaluacionTokenRoute
+    }
+    '/evaluacion/$token/bienvenida': {
+      id: '/evaluacion/$token/bienvenida'
+      path: '/bienvenida'
+      fullPath: '/evaluacion/$token/bienvenida'
+      preLoaderRoute: typeof EvaluacionTokenBienvenidaRouteImport
+      parentRoute: typeof EvaluacionTokenRoute
+    }
+    '/app/sesiones/nueva': {
+      id: '/app/sesiones/nueva'
+      path: '/nueva'
+      fullPath: '/app/sesiones/nueva'
+      preLoaderRoute: typeof AppSesionesNuevaRouteImport
+      parentRoute: typeof AppSesionesRoute
+    }
+    '/app/sesiones/$id': {
+      id: '/app/sesiones/$id'
+      path: '/$id'
+      fullPath: '/app/sesiones/$id'
+      preLoaderRoute: typeof AppSesionesIdRouteImport
+      parentRoute: typeof AppSesionesRoute
+    }
+    '/app/participantes/$id': {
+      id: '/app/participantes/$id'
+      path: '/$id'
+      fullPath: '/app/participantes/$id'
+      preLoaderRoute: typeof AppParticipantesIdRouteImport
+      parentRoute: typeof AppParticipantesRoute
+    }
+    '/app/instrumentos/$versionId': {
+      id: '/app/instrumentos/$versionId'
+      path: '/$versionId'
+      fullPath: '/app/instrumentos/$versionId'
+      preLoaderRoute: typeof AppInstrumentosVersionIdRouteImport
+      parentRoute: typeof AppInstrumentosRoute
+    }
+    '/evaluacion/$token/subtests/': {
+      id: '/evaluacion/$token/subtests/'
+      path: '/subtests'
+      fullPath: '/evaluacion/$token/subtests/'
+      preLoaderRoute: typeof EvaluacionTokenSubtestsIndexRouteImport
+      parentRoute: typeof EvaluacionTokenRoute
+    }
+    '/app/sesiones/$id/asignaciones': {
+      id: '/app/sesiones/$id/asignaciones'
+      path: '/asignaciones'
+      fullPath: '/app/sesiones/$id/asignaciones'
+      preLoaderRoute: typeof AppSesionesIdAsignacionesRouteImport
+      parentRoute: typeof AppSesionesIdRoute
+    }
+    '/app/resultados/individual/$resultadoId': {
+      id: '/app/resultados/individual/$resultadoId'
+      path: '/individual/$resultadoId'
+      fullPath: '/app/resultados/individual/$resultadoId'
+      preLoaderRoute: typeof AppResultadosIndividualResultadoIdRouteImport
+      parentRoute: typeof AppResultadosRoute
+    }
+    '/evaluacion/$token/subtests/$subtestId/instrucciones': {
+      id: '/evaluacion/$token/subtests/$subtestId/instrucciones'
+      path: '/subtests/$subtestId/instrucciones'
+      fullPath: '/evaluacion/$token/subtests/$subtestId/instrucciones'
+      preLoaderRoute: typeof EvaluacionTokenSubtestsSubtestIdInstruccionesRouteImport
+      parentRoute: typeof EvaluacionTokenRoute
+    }
+    '/app/instrumentos/$versionId/subtests/$subtestId': {
+      id: '/app/instrumentos/$versionId/subtests/$subtestId'
+      path: '/subtests/$subtestId'
+      fullPath: '/app/instrumentos/$versionId/subtests/$subtestId'
+      preLoaderRoute: typeof AppInstrumentosVersionIdSubtestsSubtestIdRouteImport
+      parentRoute: typeof AppInstrumentosVersionIdRoute
+    }
+    '/evaluacion/$token/subtests/$subtestId/items/$itemId': {
+      id: '/evaluacion/$token/subtests/$subtestId/items/$itemId'
+      path: '/subtests/$subtestId/items/$itemId'
+      fullPath: '/evaluacion/$token/subtests/$subtestId/items/$itemId'
+      preLoaderRoute: typeof EvaluacionTokenSubtestsSubtestIdItemsItemIdRouteImport
+      parentRoute: typeof EvaluacionTokenRoute
+    }
   }
 }
 
+interface AppInstrumentosVersionIdRouteChildren {
+  AppInstrumentosVersionIdSubtestsSubtestIdRoute: typeof AppInstrumentosVersionIdSubtestsSubtestIdRoute
+}
+
+const AppInstrumentosVersionIdRouteChildren: AppInstrumentosVersionIdRouteChildren =
+  {
+    AppInstrumentosVersionIdSubtestsSubtestIdRoute:
+      AppInstrumentosVersionIdSubtestsSubtestIdRoute,
+  }
+
+const AppInstrumentosVersionIdRouteWithChildren =
+  AppInstrumentosVersionIdRoute._addFileChildren(
+    AppInstrumentosVersionIdRouteChildren,
+  )
+
+interface AppInstrumentosRouteChildren {
+  AppInstrumentosVersionIdRoute: typeof AppInstrumentosVersionIdRouteWithChildren
+}
+
+const AppInstrumentosRouteChildren: AppInstrumentosRouteChildren = {
+  AppInstrumentosVersionIdRoute: AppInstrumentosVersionIdRouteWithChildren,
+}
+
+const AppInstrumentosRouteWithChildren = AppInstrumentosRoute._addFileChildren(
+  AppInstrumentosRouteChildren,
+)
+
+interface AppParticipantesRouteChildren {
+  AppParticipantesIdRoute: typeof AppParticipantesIdRoute
+}
+
+const AppParticipantesRouteChildren: AppParticipantesRouteChildren = {
+  AppParticipantesIdRoute: AppParticipantesIdRoute,
+}
+
+const AppParticipantesRouteWithChildren =
+  AppParticipantesRoute._addFileChildren(AppParticipantesRouteChildren)
+
+interface AppResultadosRouteChildren {
+  AppResultadosIndividualResultadoIdRoute: typeof AppResultadosIndividualResultadoIdRoute
+}
+
+const AppResultadosRouteChildren: AppResultadosRouteChildren = {
+  AppResultadosIndividualResultadoIdRoute:
+    AppResultadosIndividualResultadoIdRoute,
+}
+
+const AppResultadosRouteWithChildren = AppResultadosRoute._addFileChildren(
+  AppResultadosRouteChildren,
+)
+
+interface AppSesionesIdRouteChildren {
+  AppSesionesIdAsignacionesRoute: typeof AppSesionesIdAsignacionesRoute
+}
+
+const AppSesionesIdRouteChildren: AppSesionesIdRouteChildren = {
+  AppSesionesIdAsignacionesRoute: AppSesionesIdAsignacionesRoute,
+}
+
+const AppSesionesIdRouteWithChildren = AppSesionesIdRoute._addFileChildren(
+  AppSesionesIdRouteChildren,
+)
+
+interface AppSesionesRouteChildren {
+  AppSesionesIdRoute: typeof AppSesionesIdRouteWithChildren
+  AppSesionesNuevaRoute: typeof AppSesionesNuevaRoute
+  AppSesionesIndexRoute: typeof AppSesionesIndexRoute
+}
+
+const AppSesionesRouteChildren: AppSesionesRouteChildren = {
+  AppSesionesIdRoute: AppSesionesIdRouteWithChildren,
+  AppSesionesNuevaRoute: AppSesionesNuevaRoute,
+  AppSesionesIndexRoute: AppSesionesIndexRoute,
+}
+
+const AppSesionesRouteWithChildren = AppSesionesRoute._addFileChildren(
+  AppSesionesRouteChildren,
+)
+
+interface AppRouteChildren {
+  AppAuditoriaRoute: typeof AppAuditoriaRoute
+  AppCargaImagenesRoute: typeof AppCargaImagenesRoute
+  AppDashboardRoute: typeof AppDashboardRoute
+  AppDashboardResultadosRoute: typeof AppDashboardResultadosRoute
+  AppInstrumentosRoute: typeof AppInstrumentosRouteWithChildren
+  AppParticipantesRoute: typeof AppParticipantesRouteWithChildren
+  AppReportesRoute: typeof AppReportesRoute
+  AppRespaldosRoute: typeof AppRespaldosRoute
+  AppResultadosRoute: typeof AppResultadosRouteWithChildren
+  AppRevisionManualRoute: typeof AppRevisionManualRoute
+  AppRolesRoute: typeof AppRolesRoute
+  AppSesionesRoute: typeof AppSesionesRouteWithChildren
+  AppUsuariosRoute: typeof AppUsuariosRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppAuditoriaRoute: AppAuditoriaRoute,
+  AppCargaImagenesRoute: AppCargaImagenesRoute,
+  AppDashboardRoute: AppDashboardRoute,
+  AppDashboardResultadosRoute: AppDashboardResultadosRoute,
+  AppInstrumentosRoute: AppInstrumentosRouteWithChildren,
+  AppParticipantesRoute: AppParticipantesRouteWithChildren,
+  AppReportesRoute: AppReportesRoute,
+  AppRespaldosRoute: AppRespaldosRoute,
+  AppResultadosRoute: AppResultadosRouteWithChildren,
+  AppRevisionManualRoute: AppRevisionManualRoute,
+  AppRolesRoute: AppRolesRoute,
+  AppSesionesRoute: AppSesionesRouteWithChildren,
+  AppUsuariosRoute: AppUsuariosRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
+interface EvaluacionTokenRouteChildren {
+  EvaluacionTokenBienvenidaRoute: typeof EvaluacionTokenBienvenidaRoute
+  EvaluacionTokenCompletadaRoute: typeof EvaluacionTokenCompletadaRoute
+  EvaluacionTokenResumenRoute: typeof EvaluacionTokenResumenRoute
+  EvaluacionTokenIndexRoute: typeof EvaluacionTokenIndexRoute
+  EvaluacionTokenSubtestsIndexRoute: typeof EvaluacionTokenSubtestsIndexRoute
+  EvaluacionTokenSubtestsSubtestIdInstruccionesRoute: typeof EvaluacionTokenSubtestsSubtestIdInstruccionesRoute
+  EvaluacionTokenSubtestsSubtestIdItemsItemIdRoute: typeof EvaluacionTokenSubtestsSubtestIdItemsItemIdRoute
+}
+
+const EvaluacionTokenRouteChildren: EvaluacionTokenRouteChildren = {
+  EvaluacionTokenBienvenidaRoute: EvaluacionTokenBienvenidaRoute,
+  EvaluacionTokenCompletadaRoute: EvaluacionTokenCompletadaRoute,
+  EvaluacionTokenResumenRoute: EvaluacionTokenResumenRoute,
+  EvaluacionTokenIndexRoute: EvaluacionTokenIndexRoute,
+  EvaluacionTokenSubtestsIndexRoute: EvaluacionTokenSubtestsIndexRoute,
+  EvaluacionTokenSubtestsSubtestIdInstruccionesRoute:
+    EvaluacionTokenSubtestsSubtestIdInstruccionesRoute,
+  EvaluacionTokenSubtestsSubtestIdItemsItemIdRoute:
+    EvaluacionTokenSubtestsSubtestIdItemsItemIdRoute,
+}
+
+const EvaluacionTokenRouteWithChildren = EvaluacionTokenRoute._addFileChildren(
+  EvaluacionTokenRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AppRoute: AppRouteWithChildren,
+  ErrorRoute: ErrorRoute,
+  LoginRoute: LoginRoute,
+  NoAutorizadoRoute: NoAutorizadoRoute,
+  SesionVencidaRoute: SesionVencidaRoute,
+  EvaluacionTokenRoute: EvaluacionTokenRouteWithChildren,
+  EvaluacionAccesoRoute: EvaluacionAccesoRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

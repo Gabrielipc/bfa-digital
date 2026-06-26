@@ -1,20 +1,13 @@
-import { createFileRoute } from '@tanstack/react-router';
-import App from '../app/App'; // Importamos tu App actual temporalmente
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { useAuthStore } from "../store/authStore";
 
-export const Route = createFileRoute('/')({
-  component: Index,
+export const Route = createFileRoute("/")({
+  beforeLoad: () => {
+    const isAuthenticated = useAuthStore.getState().isAuthenticated();
+    if (isAuthenticated) {
+      throw redirect({ to: "/app/dashboard" });
+    } else {
+      throw redirect({ to: "/login" });
+    }
+  },
 });
-
-function Index() {
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* 
-        Mientras migramos todas las vistas a TanStack Router, 
-        renderizamos la App antigua aquí para que siga funcionando.
-        Idealmente, cada ViewKey que tenías en App.tsx se volverá un archivo nuevo 
-        en la carpeta src/routes/
-      */}
-      <App />
-    </div>
-  );
-}

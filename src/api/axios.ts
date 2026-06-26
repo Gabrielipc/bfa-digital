@@ -3,7 +3,7 @@ import { useAuthStore } from '../store/authStore';
 
 // Crear instancia de Axios
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080/api', // Ajusta esto según tu Spring Boot
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080/', // Ajusta esto según tu Spring Boot
   headers: {
     'Content-Type': 'application/json',
   },
@@ -28,9 +28,12 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Manejar cierre de sesión o token expirado
-      useAuthStore.getState().logout();
-      window.location.href = '/login'; // O redirigir con el router
+      const isLoginRequest = error.config?.url?.includes("/auth/login");
+      if (!isLoginRequest) {
+        // Manejar cierre de sesión o token expirado
+        useAuthStore.getState().logout();
+        window.location.href = '/login'; // O redirigir con el router
+      }
     }
     return Promise.reject(error);
   }

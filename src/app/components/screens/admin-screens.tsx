@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { useAdminStore } from "../../../store/adminStore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -19,7 +21,7 @@ import {
   Activity, Users, ClipboardList, FileBarChart, ShieldCheck, ImageUp, ListChecks,
   Plus, Copy, RotateCw, Filter, Download, FileText, FileSpreadsheet, Search, MoreHorizontal,
   Lock, Unlock, CheckCircle2, XCircle, AlertTriangle, Eye, Upload, Image as ImageIcon,
-  ChevronRight, Inbox, Calendar, MapPin, Clock, Hash, KeyRound, Trash2, Pencil, Send
+  ChevronRight, Inbox, Calendar, MapPin, Clock, Hash, KeyRound, Trash2, Pencil, Send, Play, Pause
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend } from "recharts";
 
@@ -85,26 +87,149 @@ export function DashboardScreen() {
 
 /* ------------------------- Session Create (Aplicador) ------------------------- */
 export function SessionCreateScreen() {
-  const [subtests, setSubtests] = useState<Record<string, boolean>>({ figuras: true, desplazamiento: true, espacial: false });
-  const [participants, setParticipants] = useState<string[]>(["Ana M. Pérez", "Carlos Rodríguez", "Sofía Núñez"]);
+  const navigate = useNavigate();
+  const participantsList = useAdminStore((s) => s.participants);
+  const createSession = useAdminStore((s) => s.createSession);
+  const publishedVersions = useAdminStore((s) => s.publishedVersions);
+  const versionSubtests = useAdminStore((s) => s.versionSubtests);
+  const fetchPublishedVersions = useAdminStore((s) => s.fetchPublishedVersions);
+  const fetchVersionSubtests = useAdminStore((s) => s.fetchVersionSubtests);
+  const fetchParticipants = useAdminStore((s) => s.fetchParticipants);
+
+  // Form states
+  const [sessionName, setSessionName] = useState("SES-2026-06-D · Psicología III");
+  const [groupName, setGroupName] = useState("Psicología — 3er año");
+  const [date, setDate] = useState("2026-06-10");
+  const [time, setTime] = useState("14:00");
+  const [location, setLocation] = useState("Laboratorio cognitivo · UAM");
+  const [selectedVersionId, setSelectedVersionId] = useState<number | "">("");
+
+  const [selectedSubtestIds, setSelectedSubtestIds] = useState<number[]>([]);
+  const [assignedIds, setAssignedIds] = useState<string[]>([]);
+  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [generated, setGenerated] = useState(false);
+  const [sessionCode, setSessionCode] = useState("");
+  const [copiedTokenIdx, setCopiedTokenIdx] = useState<number | null>(null);
+  const [newlyCreatedSessionId, setNewlyCreatedSessionId] = useState<string>("");
+
+  useEffect(() => {
+    fetchPublishedVersions();
+    fetchParticipants();
+  }, []);
+
+  const currentSubtests = selectedVersionId ? versionSubtests[String(selectedVersionId)] || [] : [];
+
+  useEffect(() => {
+    if (selectedVersionId) {
+      fetchVersionSubtests(String(selectedVersionId));
+    }
+  }, [selectedVersionId]);
+
+  useEffect(() => {
+    if (currentSubtests.length > 0) {
+      setSelectedSubtestIds(currentSubtests.map((s) => s.id));
+    } else {
+      setSelectedSubtestIds([]);
+    }
+  }, [currentSubtests]);
+
+  const sessionAssignments = newlyCreatedSessionId ? useAdminStore.getState().assignments[newlyCreatedSessionId] || [] : [];
+
+  const handleGenerate = async () => {
+    if (!selectedVersionId) {
+      alert("Debes seleccionar una versión de test.");
+      return;
+    }
+
+    if (selectedSubtestIds.length === 0) {
+      alert("Debes seleccionar al menos un subtest.");
+      return;
+    }
+
+    if (assignedIds.length === 0) {
+      alert("Debes asignar al menos un participante.");
+      return;
+    }
+
+    // Generar código único para la sesión
+    const newCode = `SES-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+    setSessionCode(newCode);
+
+    const scheduledStart = `${date}T${time}:00`;
+    const scheduledEnd = `${date}T23:59:59`;
+
+    const subtestConfigs = selectedSubtestIds.map((subtestId, index) => {
+      const orig = currentSubtests.find((s) => s.id === subtestId);
+      return {
+        subtestId,
+        order: index + 1,
+        timeLimitSeconds: orig?.tiempoLimiteSegundos || 300,
+        randomizeItems: orig?.permiteAleatorizarItems || false,
+        randomizeOptions: orig?.permiteAleatorizarOpciones || false,
+      };
+    });
+
+    try {
+      await createSession(
+        {
+          versionTestId: Number(selectedVersionId),
+          code: newCode,
+          name: sessionName,
+          description: groupName,
+          scheduledStart,
+          scheduledEnd,
+          location,
+        },
+        subtestConfigs,
+        assignedIds
+      );
+
+      const latestSessions = useAdminStore.getState().sessions;
+      const created = latestSessions.find((s) => s.code === newCode);
+      if (created) {
+        setNewlyCreatedSessionId(created.id);
+        await useAdminStore.getState().fetchAssignments(created.id);
+      }
+
+      setGenerated(true);
+    } catch (err: any) {
+      alert(`Error al crear la sesión: ${err.message}`);
+    }
+  };
 
   return (
-    <div className="grid lg:grid-cols-3 gap-4">
-      <div className="lg:col-span-2 space-y-4">
+    <div className="grid lg:grid-cols-3 gap-6">
+      <div className="lg:col-span-2 space-y-6">
         <Card className="border-0 shadow-sm">
-          <CardHeader><CardTitle>Datos de la sesión</CardTitle><CardDescription>Configure la sesión a aplicar.</CardDescription></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-lg text-primary font-bold">Datos de la sesión</CardTitle>
+            <CardDescription>Configure los datos principales de la sesión evaluativa.</CardDescription>
+          </CardHeader>
           <CardContent className="grid md:grid-cols-2 gap-4">
-            <Field label="Nombre de sesión"><Input defaultValue="SES-2026-06-D · Psicología III" /></Field>
-            <Field label="Grupo / carrera"><Input defaultValue="Psicología — 3er año" /></Field>
-            <Field label="Fecha"><Input type="date" defaultValue="2026-06-10" /></Field>
-            <Field label="Hora de apertura"><Input type="time" defaultValue="14:00" /></Field>
-            <Field label="Ubicación"><Input defaultValue="Laboratorio cognitivo · UAM" /></Field>
-            <Field label="Aplicador">
-              <Select defaultValue="ap1"><SelectTrigger><SelectValue /></SelectTrigger>
+            <Field label="Nombre de sesión">
+              <Input value={sessionName} onChange={(e) => setSessionName(e.target.value)} />
+            </Field>
+            <Field label="Grupo / carrera">
+              <Input value={groupName} onChange={(e) => setGroupName(e.target.value)} />
+            </Field>
+            <Field label="Fecha">
+              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            </Field>
+            <Field label="Hora de apertura">
+              <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+            </Field>
+            <Field label="Ubicación">
+              <Input value={location} onChange={(e) => setLocation(e.target.value)} />
+            </Field>
+            <Field label="Versión de Test">
+              <Select value={String(selectedVersionId)} onValueChange={(val) => setSelectedVersionId(Number(val))}>
+                <SelectTrigger><SelectValue placeholder="Seleccione versión..." /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ap1">Dra. L. Hernández</SelectItem>
-                  <SelectItem value="ap2">Lic. J. Martínez</SelectItem>
+                  {publishedVersions.map((v) => (
+                    <SelectItem key={v.id} value={String(v.id)}>
+                      v{v.numeroVersion} ({v.estado})
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </Field>
@@ -112,206 +237,516 @@ export function SessionCreateScreen() {
         </Card>
 
         <Card className="border-0 shadow-sm">
-          <CardHeader><CardTitle>Subtests habilitados</CardTitle><CardDescription>Solo los marcados se mostrarán al participante.</CardDescription></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-lg text-primary font-bold">Subtests habilitados</CardTitle>
+            <CardDescription>Seleccione los subtests que componen esta sesión.</CardDescription>
+          </CardHeader>
           <CardContent className="space-y-3">
-            {[
-              { id: "figuras", name: "Figuras idénticas", v: "v2.1" },
-              { id: "desplazamiento", name: "Desplazamiento", v: "v1.4" },
-              { id: "espacial", name: "Espacial", v: "v1.2" },
-            ].map((s) => (
-              <label key={s.id} className="flex items-center gap-3 rounded border p-3 cursor-pointer hover:bg-muted/50">
-                <Checkbox checked={subtests[s.id]} onCheckedChange={(v) => setSubtests((p) => ({ ...p, [s.id]: !!v }))} />
-                <div className="flex-1">
-                  <div className="font-medium">{s.name}</div>
-                  <div className="text-xs text-muted-foreground">Versión publicada {s.v}</div>
-                </div>
-                <Badge variant="secondary"><Lock className="h-3 w-3 mr-1" /> publicada</Badge>
-              </label>
-            ))}
+            {!selectedVersionId ? (
+              <div className="text-center py-6 text-sm text-muted-foreground border border-dashed rounded-lg">
+                Seleccione una versión de test para cargar los subtests.
+              </div>
+            ) : currentSubtests.length === 0 ? (
+              <div className="text-center py-6 text-sm text-muted-foreground border border-dashed rounded-lg">
+                Cargando subtests o sin subtests disponibles...
+              </div>
+            ) : (
+              currentSubtests.map((s) => {
+                const isChecked = selectedSubtestIds.includes(s.id);
+                return (
+                  <label key={s.id} className="flex items-center gap-3 rounded-lg border p-4 cursor-pointer hover:bg-muted/40 transition">
+                    <Checkbox
+                      checked={isChecked}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedSubtestIds([...selectedSubtestIds, s.id]);
+                        } else {
+                          setSelectedSubtestIds(selectedSubtestIds.filter((id) => id !== s.id));
+                        }
+                      }}
+                    />
+                    <div className="flex-1">
+                      <div className="font-semibold text-sm text-foreground">{s.nombreSubtest}</div>
+                      <div className="text-xs text-muted-foreground font-medium">Orden: {s.numeroOrden} · Límite: {s.tiempoLimiteSegundos}s</div>
+                    </div>
+                    <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-100">
+                      <Lock className="h-3 w-3 mr-1" /> {s.estado.toLowerCase()}
+                    </Badge>
+                  </label>
+                );
+              })
+            )}
           </CardContent>
         </Card>
 
         <Card className="border-0 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between">
-            <div><CardTitle>Participantes asignados</CardTitle><CardDescription>{participants.length} asignados</CardDescription></div>
-            <Button variant="outline" size="sm"><Plus className="h-4 w-4 mr-1" /> Asignar</Button>
+            <div>
+              <CardTitle className="text-lg text-primary font-bold">Participantes asignados</CardTitle>
+              <CardDescription>{assignedIds.length} participantes asignados</CardDescription>
+            </div>
+            <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9"><Plus className="h-4 w-4 mr-1" /> Asignar</Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md max-h-[80vh] flex flex-col">
+                <DialogHeader>
+                  <DialogTitle>Asignar Participantes</DialogTitle>
+                  <DialogDescription>Seleccione los participantes que tomarán la prueba.</DialogDescription>
+                </DialogHeader>
+                <div className="flex-1 overflow-y-auto space-y-2 py-4">
+                  {participantsList.length === 0 ? (
+                    <div className="text-center py-6 text-sm text-muted-foreground">
+                      No hay participantes registrados.
+                    </div>
+                  ) : (
+                    participantsList.map((p) => {
+                      const isChecked = assignedIds.includes(p.id);
+                      return (
+                        <label key={p.id} className="flex items-center gap-3 rounded-md border p-2.5 cursor-pointer hover:bg-muted/40 transition">
+                          <Checkbox
+                            checked={isChecked}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setAssignedIds([...assignedIds, p.id]);
+                              } else {
+                                setAssignedIds(assignedIds.filter((id) => id !== p.id));
+                              }
+                            }}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-semibold truncate text-foreground">{p.name}</div>
+                            <div className="text-xs text-muted-foreground font-medium">{p.id} · {p.carrera} · {p.grupo}</div>
+                          </div>
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
+                <DialogFooter>
+                  <Button onClick={() => setIsAssignDialogOpen(false)} className="w-full">Listo</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              {participants.map((p) => (
-                <div key={p} className="flex items-center gap-3 p-2 rounded border">
-                  <Avatar className="h-8 w-8"><AvatarFallback className="bg-accent text-primary text-xs">{p.split(" ").map((x) => x[0]).slice(0, 2).join("")}</AvatarFallback></Avatar>
-                  <div className="flex-1 text-sm">{p}</div>
-                  <Button variant="ghost" size="icon" onClick={() => setParticipants((l) => l.filter((x) => x !== p))}><Trash2 className="h-4 w-4" /></Button>
+            <div className="space-y-2.5">
+              {assignedIds.length === 0 ? (
+                <div className="text-center py-6 text-sm text-muted-foreground border border-dashed rounded-lg">
+                  Ningún participante asignado. Haz clic en Asignar.
                 </div>
-              ))}
+              ) : (
+                assignedIds.map((pId) => {
+                  const p = participantsList.find((x) => x.id === pId);
+                  if (!p) return null;
+                  return (
+                    <div key={p.id} className="flex items-center gap-3 p-3 rounded-lg border bg-white shadow-sm">
+                      <Avatar className="h-9 w-9">
+                        <AvatarFallback className="bg-primary/5 text-primary text-xs font-bold">
+                          {p.name ? p.name.split(" ").map((x) => x[0]).slice(0, 2).join("") : "?"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-foreground truncate">{p.name}</div>
+                        <div className="text-xs text-muted-foreground font-medium">{p.id} · {p.carrera} · {p.grupo}</div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground hover:text-destructive hover:bg-destructive/5"
+                        onClick={() => setAssignedIds((l) => l.filter((x) => x !== pId))}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-6">
         <Card className="border-0 shadow-sm">
-          <CardHeader><CardTitle>Generar acceso</CardTitle><CardDescription>Tokens únicos para cada participante.</CardDescription></CardHeader>
-          <CardContent className="space-y-3">
-            <Button className="w-full" onClick={() => setGenerated(true)}><KeyRound className="h-4 w-4 mr-1" /> Generar tokens</Button>
-            {generated && (
-              <div className="space-y-2">
-                {participants.map((p, i) => {
-                  const token = `bfa.uam/e/${(Math.random().toString(36).slice(2, 6) + i).padEnd(8, "0")}`;
-                  return (
-                    <div key={p} className="rounded border p-2 text-sm">
-                      <div className="text-xs text-muted-foreground">{p}</div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <code className="flex-1 truncate text-xs bg-muted px-2 py-1 rounded">{token}</code>
-                        <Button variant="ghost" size="icon"><Copy className="h-4 w-4" /></Button>
+          <CardHeader>
+            <CardTitle className="text-lg text-primary font-bold">Acceso y Distribución</CardTitle>
+            <CardDescription>Configure y genere los tokens para que los participantes ingresen.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {!generated ? (
+              <Button className="w-full h-10 font-medium" onClick={handleGenerate}>
+                <KeyRound className="h-4 w-4 mr-2" /> Guardar y Generar Tokens
+              </Button>
+            ) : (
+              <div className="space-y-4">
+                <Alert className="bg-emerald-50 border-emerald-100 text-emerald-800">
+                  <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                  <AlertTitle className="font-semibold text-emerald-800">Sesión Generada</AlertTitle>
+                  <AlertDescription className="text-emerald-700">La sesión {sessionCode} ha sido guardada.</AlertDescription>
+                </Alert>
+                <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Tokens generados:</div>
+                <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                  {sessionAssignments.map((asg, idx) => {
+                    const handleCopy = () => {
+                      navigator.clipboard.writeText(`${window.location.origin}/evaluacion/${asg.token}`);
+                      setCopiedTokenIdx(idx);
+                      setTimeout(() => setCopiedTokenIdx(null), 2000);
+                    };
+                    return (
+                      <div key={asg.participantId} className="rounded-lg border p-2.5 bg-muted/30">
+                        <div className="text-xs font-semibold text-foreground truncate">{asg.participantName}</div>
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <code className="flex-1 truncate text-xs bg-white border px-2 py-1 rounded font-mono font-medium text-muted-foreground">
+                            {asg.token}
+                          </code>
+                          <Button variant="outline" size="icon" className="h-7 w-7 shrink-0" onClick={handleCopy}>
+                            {copiedTokenIdx === idx ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1" onClick={() => navigate({ to: "/app/sesiones" })}>
+                    Ir al monitor
+                  </Button>
+                  <Button className="flex-1" onClick={() => navigate({ to: `/app/sesiones/${newlyCreatedSessionId}` })}>
+                    Supervisar en vivo
+                  </Button>
+                </div>
               </div>
             )}
           </CardContent>
         </Card>
-        <Alert>
-          <ShieldCheck className="h-4 w-4" />
-          <AlertTitle>Confidencialidad</AlertTitle>
-          <AlertDescription>Cada token es de un solo uso y caduca al cerrar la sesión.</AlertDescription>
+        <Alert className="bg-amber-50 border-amber-100 text-amber-900">
+          <AlertTriangle className="h-4 w-4 text-amber-600" />
+          <AlertTitle className="font-semibold text-amber-900">Confidencialidad</AlertTitle>
+          <AlertDescription className="text-amber-800 text-xs leading-relaxed">
+            Cada token es de un solo uso y caduca automáticamente al cerrar la sesión desde el panel del aplicador.
+          </AlertDescription>
         </Alert>
       </div>
     </div>
   );
 }
 
-/* ------------------------- Sessions Monitor ------------------------- */
+/* ------------------------- Sessions Monitor (Listado General) ------------------------- */
 export function SessionsMonitorScreen() {
-  const sessions = [
-    { id: "P-0184", name: "Ana M. Pérez", subtest: "Figuras idénticas", progress: 60, state: "en-progreso" },
-    { id: "P-0185", name: "Carlos Rodríguez", subtest: "—", progress: 0, state: "no-iniciado" },
-    { id: "P-0186", name: "Sofía Núñez", subtest: "Espacial", progress: 100, state: "completado" },
-    { id: "P-0187", name: "Luis García", subtest: "Desplazamiento", progress: 40, state: "interrumpido" },
-    { id: "P-0188", name: "Marta López", subtest: "—", progress: 0, state: "anulado" },
-  ];
+  const navigate = useNavigate();
+  const sessions = useAdminStore((s) => s.sessions);
+  const assignments = useAdminStore((s) => s.assignments);
+  const updateSessionStatus = useAdminStore((s) => s.updateSessionStatus);
+  const fetchSessions = useAdminStore((s) => s.fetchSessions);
+
+  useEffect(() => {
+    fetchSessions();
+  }, []);
+
+  const getStatusBadge = (status: Session["status"]) => {
+    switch (status) {
+      case "ACTIVA":
+        return <Badge className="bg-emerald-100 text-emerald-800 border-none font-semibold">Activa (En vivo)</Badge>;
+      case "PLANIFICADA":
+        return <Badge className="bg-slate-100 text-slate-700 border-none font-semibold">Planificada</Badge>;
+      case "PAUSADA":
+        return <Badge className="bg-amber-100 text-amber-800 border-none font-semibold">Pausada</Badge>;
+      case "FINALIZADA":
+        return <Badge className="bg-muted text-muted-foreground border-none font-semibold">Finalizada</Badge>;
+    }
+  };
+
   return (
-    <Card className="border-0 shadow-sm">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div><CardTitle>SES-2026-06-A · Psicología I</CardTitle><CardDescription>Monitor en tiempo real</CardDescription></div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm"><RotateCw className="h-4 w-4 mr-1" /> Refrescar</Button>
-          <Button variant="outline" size="sm"><Filter className="h-4 w-4 mr-1" /> Filtros</Button>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between flex-wrap gap-3 bg-white p-4 rounded-xl border shadow-sm">
+        <div>
+          <h2 className="text-lg font-bold text-primary">Sesiones Evaluativas</h2>
+          <p className="text-xs text-muted-foreground">Listado de controles grupales del sistema.</p>
         </div>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Participante</TableHead><TableHead>Subtest actual</TableHead><TableHead>Progreso</TableHead><TableHead>Estado</TableHead><TableHead>Última act.</TableHead><TableHead className="w-10" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sessions.map((s) => (
-              <TableRow key={s.id}>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Avatar className="h-7 w-7"><AvatarFallback className="bg-accent text-primary text-xs">{s.name.split(" ").map((x) => x[0]).slice(0, 2).join("")}</AvatarFallback></Avatar>
-                    <div>
-                      <div className="text-sm font-medium">{s.name}</div>
-                      <div className="text-xs text-muted-foreground">{s.id}</div>
-                    </div>
+        <Button onClick={() => navigate({ to: "/app/sesiones/nueva" })} size="sm" className="h-9">
+          <Plus className="h-4 w-4 mr-1" /> Nueva Sesión
+        </Button>
+      </div>
+
+      <div className="grid gap-4">
+        {sessions.map((s) => {
+          const asgs = assignments[s.id] || [];
+          const completedCount = asgs.filter(a => a.state === "completado").length;
+          const inProgressCount = asgs.filter(a => a.state === "en-progreso").length;
+          const interruptedCount = asgs.filter(a => a.state === "interrumpido").length;
+          
+          // Progreso promedio general de los participantes
+          const avgProgress = asgs.length > 0 
+            ? Math.round(asgs.reduce((acc, curr) => acc + curr.overallProgress, 0) / asgs.length) 
+            : 0;
+
+          return (
+            <Card key={s.id} className="border-0 shadow-sm hover:shadow transition-all bg-white duration-200">
+              <CardContent className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-5">
+                <div className="space-y-2 flex-1 min-w-0">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span className="text-base font-bold text-primary hover:underline cursor-pointer truncate" onClick={() => navigate({ to: `/app/sesiones/${s.id}` })}>
+                      {s.name}
+                    </span>
+                    {getStatusBadge(s.status)}
                   </div>
-                </TableCell>
-                <TableCell>{s.subtest}</TableCell>
-                <TableCell><div className="w-40"><Progress value={s.progress} /></div></TableCell>
-                <TableCell><StateBadge s={s.state} /></TableCell>
-                <TableCell className="text-sm text-muted-foreground">hace 2 min</TableCell>
-                <TableCell><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+                  <div className="text-xs text-muted-foreground font-medium flex flex-wrap items-center gap-x-4 gap-y-1">
+                    <span className="flex items-center"><Calendar className="h-3.5 w-3.5 mr-1 text-muted-foreground" /> {s.date} · {s.time}</span>
+                    <span className="flex items-center"><MapPin className="h-3.5 w-3.5 mr-1 text-muted-foreground" /> {s.location}</span>
+                    <span className="flex items-center"><Users className="h-3.5 w-3.5 mr-1 text-muted-foreground" /> {asgs.length} participantes</span>
+                  </div>
+                  <div className="flex gap-1.5 flex-wrap pt-1">
+                    {s.subtests.map((sub) => (
+                      <Badge key={sub} variant="outline" className="text-[10px] capitalize bg-muted/20 border-muted font-medium">
+                        {sub === "figuras" ? "Figuras idénticas" : sub}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-6 md:shrink-0">
+                  {asgs.length > 0 && (
+                    <div className="space-y-1.5 w-full sm:w-44">
+                      <div className="flex items-center justify-between text-xs font-semibold">
+                        <span className="text-muted-foreground">Progreso medio:</span>
+                        <span className="text-primary">{avgProgress}%</span>
+                      </div>
+                      <Progress value={avgProgress} className="h-1.5" />
+                      <div className="flex justify-between text-[10px] font-bold text-muted-foreground/80">
+                        <span className="text-emerald-600">{completedCount} listos</span>
+                        <span className="text-blue-600">{inProgressCount} activos</span>
+                        {interruptedCount > 0 && <span className="text-amber-600">{interruptedCount} caídos</span>}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-end gap-2 border-t sm:border-t-0 pt-3 sm:pt-0">
+                    {s.status === "PLANIFICADA" && (
+                      <Button variant="outline" size="sm" onClick={() => updateSessionStatus(s.id, "ACTIVA")}>
+                        <Activity className="h-3.5 w-3.5 mr-1 text-emerald-600" /> Iniciar
+                      </Button>
+                    )}
+                    {s.status === "ACTIVA" && (
+                      <Button variant="outline" size="sm" className="border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 hover:text-amber-800" onClick={() => updateSessionStatus(s.id, "PAUSADA")}>
+                        <Pause className="h-3.5 w-3.5 mr-1" /> Pausar
+                      </Button>
+                    )}
+                    {s.status === "PAUSADA" && (
+                      <Button variant="outline" size="sm" className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800" onClick={() => updateSessionStatus(s.id, "ACTIVA")}>
+                        <Play className="h-3.5 w-3.5 mr-1" /> Reanudar
+                      </Button>
+                    )}
+                    {(s.status === "ACTIVA" || s.status === "PAUSADA") && (
+                      <Button variant="outline" size="sm" className="border-destructive/20 text-destructive hover:bg-destructive/5" onClick={() => updateSessionStatus(s.id, "FINALIZADA")}>
+                        <XCircle className="h-3.5 w-3.5 mr-1" /> Cerrar
+                      </Button>
+                    )}
+                    <Button size="sm" asChild className="h-9 shadow-sm bg-primary hover:bg-primary/95 text-white">
+                      <Link to={`/app/sesiones/${s.id}`}>
+                        Monitorear
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
-function StateBadge({ s }: { s: string }) {
-  const map: any = {
-    "no-iniciado": ["bg-slate-100 text-slate-700", "No iniciado"],
-    "en-progreso": ["bg-blue-100 text-blue-800", "En progreso"],
-    "completado": ["bg-emerald-100 text-emerald-800", "Completado"],
-    "interrumpido": ["bg-amber-100 text-amber-800", "Interrumpido"],
-    "anulado": ["bg-rose-100 text-rose-800", "Anulado"],
-  };
-  const [cls, lbl] = map[s] ?? ["bg-muted", s];
-  return <Badge className={`${cls} hover:${cls}`}>{lbl}</Badge>;
-}
-
-/* ------------------------- Participants ------------------------- */
+/* ------------------------- Participants (Administración de Participantes) ------------------------- */
 export function ParticipantsScreen() {
   const [open, setOpen] = useState(false);
-  const list = [
-    { id: "P-0184", name: "Ana M. Pérez", age: 21, sex: "F", carrera: "Psicología", grupo: "3A" },
-    { id: "P-0185", name: "Carlos Rodríguez", age: 23, sex: "M", carrera: "Medicina", grupo: "5B" },
-    { id: "P-0186", name: "Sofía Núñez", age: 20, sex: "F", carrera: "Psicología", grupo: "3A" },
-    { id: "P-0187", name: "Luis García", age: 22, sex: "M", carrera: "Ingeniería", grupo: "4A" },
-  ];
+  const navigate = useNavigate();
+  const list = useAdminStore((s) => s.participants);
+  const addParticipant = useAdminStore((s) => s.addParticipant);
+  const fetchParticipants = useAdminStore((s) => s.fetchParticipants);
+
+  useEffect(() => {
+    fetchParticipants();
+  }, []);
+
+  // Filter states
+  const [searchQuery, setSearchQuery] = useState("");
+  const [careerFilter, setCareerFilter] = useState("all");
+
+  // Form states
+  const [code, setCode] = useState("");
+  const [name, setName] = useState("");
+  const [age, setAge] = useState("");
+  const [sex, setSex] = useState<"F" | "M" | "O">("F");
+  const [carrera, setCarrera] = useState("");
+  const [grupo, setGrupo] = useState("");
+
+  const handleOpenDialog = () => {
+    // Generar código autoincrementable sugerido
+    const nextNum = list.length + 185;
+    setCode(`P-0${nextNum}`);
+    setName("");
+    setAge("21");
+    setSex("F");
+    setCarrera("Psicología");
+    setGrupo("3A");
+    setOpen(true);
+  };
+
+  const handleSaveParticipant = () => {
+    if (!code || !name) {
+      alert("El código y nombre son requeridos.");
+      return;
+    }
+
+    const parts = name.trim().split(" ");
+    const firstNames = parts[0] || "";
+    const lastNames = parts.slice(1).join(" ") || "S/A";
+
+    addParticipant({
+      code,
+      firstNames,
+      lastNames
+    }).catch(err => {
+      alert("Error al registrar participante: " + err.message);
+    });
+
+    setOpen(false);
+  };
+
+  // Filtrado de participantes
+  const filteredList = list.filter((p) => {
+    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          p.id.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCareer = careerFilter === "all" || 
+                          p.carrera.toLowerCase().includes(careerFilter.toLowerCase());
+    return matchesSearch && matchesCareer;
+  });
+
   return (
     <Card className="border-0 shadow-sm">
-      <CardHeader className="flex flex-row items-center justify-between gap-2">
-        <div><CardTitle>Participantes</CardTitle><CardDescription>Listado e información demográfica</CardDescription></div>
-        <div className="flex gap-2">
+      <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap bg-white border-b rounded-t-xl">
+        <div>
+          <CardTitle className="text-lg text-primary font-bold">Participantes</CardTitle>
+          <CardDescription>Registro e información demográfica de los evaluados.</CardDescription>
+        </div>
+        <div className="flex gap-2 flex-wrap items-center">
           <div className="relative">
             <Search className="h-4 w-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Buscar…" className="pl-8" />
+            <Input 
+              placeholder="Buscar por código o nombre…" 
+              className="pl-8 w-60 h-9" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
-          <Select defaultValue="all">
-            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+          <Select value={careerFilter} onValueChange={setCareerFilter}>
+            <SelectTrigger className="w-44 h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas las carreras</SelectItem>
-              <SelectItem value="psi">Psicología</SelectItem>
-              <SelectItem value="med">Medicina</SelectItem>
+              <SelectItem value="psicologia">Psicología</SelectItem>
+              <SelectItem value="medicina">Medicina</SelectItem>
+              <SelectItem value="ingenieria">Ingeniería</SelectItem>
+              <SelectItem value="derecho">Derecho</SelectItem>
             </SelectContent>
           </Select>
+          <Button onClick={handleOpenDialog} size="sm" className="h-9">
+            <Plus className="h-4 w-4 mr-1" /> Nuevo Participante
+          </Button>
+
           <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-1" /> Nuevo</Button></DialogTrigger>
-            <DialogContent>
-              <DialogHeader><DialogTitle>Registrar participante</DialogTitle><DialogDescription>La información es confidencial.</DialogDescription></DialogHeader>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Código"><Input placeholder="P-XXXX" /></Field>
-                <Field label="Nombre completo"><Input /></Field>
-                <Field label="Edad"><Input type="number" /></Field>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Registrar Participante</DialogTitle>
+                <DialogDescription>Añada un nuevo evaluado. Los datos demográficos son confidenciales.</DialogDescription>
+              </DialogHeader>
+              <div className="grid grid-cols-2 gap-4 py-4">
+                <Field label="Código">
+                  <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="P-XXXX" />
+                </Field>
+                <Field label="Nombre completo">
+                  <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="ej: Juan Pérez" />
+                </Field>
+                <Field label="Edad">
+                  <Input type="number" value={age} onChange={(e) => setAge(e.target.value)} />
+                </Field>
                 <Field label="Sexo">
-                  <Select><SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                    <SelectContent><SelectItem value="f">Femenino</SelectItem><SelectItem value="m">Masculino</SelectItem><SelectItem value="o">Otro</SelectItem></SelectContent>
+                  <Select value={sex} onValueChange={(v: any) => setSex(v)}>
+                    <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="F">Femenino</SelectItem>
+                      <SelectItem value="M">Masculino</SelectItem>
+                      <SelectItem value="O">Otro</SelectItem>
+                    </SelectContent>
                   </Select>
                 </Field>
-                <Field label="Carrera"><Input /></Field>
-                <Field label="Grupo"><Input /></Field>
+                <Field label="Carrera">
+                  <Input value={carrera} onChange={(e) => setCarrera(e.target.value)} placeholder="ej: Psicología" />
+                </Field>
+                <Field label="Grupo">
+                  <Input value={grupo} onChange={(e) => setGrupo(e.target.value)} placeholder="ej: 3A" />
+                </Field>
               </div>
-              <DialogFooter><Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={() => setOpen(false)}>Guardar</Button></DialogFooter>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+                <Button onClick={handleSaveParticipant}>Guardar</Button>
+              </DialogFooter>
             </DialogContent>
           </Dialog>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-0">
         <Table>
-          <TableHeader>
+          <TableHeader className="bg-muted/30">
             <TableRow>
-              <TableHead>Código</TableHead><TableHead>Nombre</TableHead><TableHead>Edad</TableHead><TableHead>Sexo</TableHead><TableHead>Carrera</TableHead><TableHead>Grupo</TableHead><TableHead className="w-10" />
+              <TableHead className="font-semibold py-3 pl-6">Código</TableHead>
+              <TableHead className="font-semibold py-3">Nombre</TableHead>
+              <TableHead className="font-semibold py-3">Edad</TableHead>
+              <TableHead className="font-semibold py-3">Sexo</TableHead>
+              <TableHead className="font-semibold py-3">Carrera</TableHead>
+              <TableHead className="font-semibold py-3">Grupo</TableHead>
+              <TableHead className="font-semibold py-3">Último Estado</TableHead>
+              <TableHead className="w-20 text-right pr-6">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {list.map((p) => (
-              <TableRow key={p.id}>
-                <TableCell className="font-mono text-xs">{p.id}</TableCell>
-                <TableCell>{p.name}</TableCell>
-                <TableCell>{p.age}</TableCell>
-                <TableCell>{p.sex}</TableCell>
-                <TableCell>{p.carrera}</TableCell>
-                <TableCell><Badge variant="secondary">{p.grupo}</Badge></TableCell>
-                <TableCell><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></TableCell>
+            {filteredList.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
+                  No se encontraron participantes.
+                </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              filteredList.map((p) => (
+                <TableRow key={p.id} className="hover:bg-muted/10 transition">
+                  <TableCell className="font-mono text-xs pl-6 py-3">{p.id}</TableCell>
+                  <TableCell className="font-medium text-foreground py-3">{p.name}</TableCell>
+                  <TableCell className="py-3">{p.age} años</TableCell>
+                  <TableCell className="py-3">{p.sex === "F" ? "Femenino" : p.sex === "M" ? "Masculino" : "Otro"}</TableCell>
+                  <TableCell className="py-3">{p.carrera}</TableCell>
+                  <TableCell className="py-3"><Badge variant="secondary" className="font-medium">{p.grupo}</Badge></TableCell>
+                  <TableCell className="py-3">
+                    <Badge className={
+                      p.latestAttemptStatus === "COMPLETADO" ? "bg-emerald-100 text-emerald-800 border-none font-medium hover:bg-emerald-100" :
+                      p.latestAttemptStatus === "EN_PROGRESO" ? "bg-blue-100 text-blue-800 border-none font-medium hover:bg-blue-100" :
+                      p.latestAttemptStatus === "INTERRUMPIDO" ? "bg-amber-100 text-amber-800 border-none font-medium hover:bg-amber-100" :
+                      p.latestAttemptStatus === "ANULADO" ? "bg-rose-100 text-rose-800 border-none font-medium hover:bg-rose-100" :
+                      "bg-slate-100 text-slate-700 border-none font-medium hover:bg-slate-100"
+                    }>
+                      {p.latestAttemptStatus.replace("_", " ")}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right pr-6 py-3">
+                    <Button variant="ghost" size="sm" asChild className="h-8 hover:bg-primary/5 hover:text-primary">
+                      <Link to={`/app/participantes/${p.id}`}>
+                        Detalles
+                      </Link>
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </CardContent>
