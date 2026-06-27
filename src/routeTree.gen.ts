@@ -18,6 +18,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as EvaluacionAccesoRouteImport } from './routes/evaluacion/acceso'
 import { Route as EvaluacionTokenRouteImport } from './routes/evaluacion/$token'
 import { Route as AppUsuariosRouteImport } from './routes/app/usuarios'
+import { Route as AppSexosRouteImport } from './routes/app/sexos'
 import { Route as AppSesionesRouteImport } from './routes/app/sesiones'
 import { Route as AppRolesRouteImport } from './routes/app/roles'
 import { Route as AppRevisionManualRouteImport } from './routes/app/revision-manual'
@@ -26,8 +27,11 @@ import { Route as AppRespaldosRouteImport } from './routes/app/respaldos'
 import { Route as AppReportesRouteImport } from './routes/app/reportes'
 import { Route as AppParticipantesRouteImport } from './routes/app/participantes'
 import { Route as AppInstrumentosRouteImport } from './routes/app/instrumentos'
+import { Route as AppGruposRouteImport } from './routes/app/grupos'
 import { Route as AppDashboardResultadosRouteImport } from './routes/app/dashboard-resultados'
 import { Route as AppDashboardRouteImport } from './routes/app/dashboard'
+import { Route as AppCohortesRouteImport } from './routes/app/cohortes'
+import { Route as AppCarrerasRouteImport } from './routes/app/carreras'
 import { Route as AppCargaImagenesRouteImport } from './routes/app/carga-imagenes'
 import { Route as AppAuditoriaRouteImport } from './routes/app/auditoria'
 import { Route as EvaluacionTokenIndexRouteImport } from './routes/evaluacion/$token/index'
@@ -91,6 +95,11 @@ const AppUsuariosRoute = AppUsuariosRouteImport.update({
   path: '/usuarios',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSexosRoute = AppSexosRouteImport.update({
+  id: '/sexos',
+  path: '/sexos',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSesionesRoute = AppSesionesRouteImport.update({
   id: '/sesiones',
   path: '/sesiones',
@@ -131,6 +140,11 @@ const AppInstrumentosRoute = AppInstrumentosRouteImport.update({
   path: '/instrumentos',
   getParentRoute: () => AppRoute,
 } as any)
+const AppGruposRoute = AppGruposRouteImport.update({
+  id: '/grupos',
+  path: '/grupos',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDashboardResultadosRoute = AppDashboardResultadosRouteImport.update({
   id: '/dashboard-resultados',
   path: '/dashboard-resultados',
@@ -139,6 +153,16 @@ const AppDashboardResultadosRoute = AppDashboardResultadosRouteImport.update({
 const AppDashboardRoute = AppDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCohortesRoute = AppCohortesRouteImport.update({
+  id: '/cohortes',
+  path: '/cohortes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCarrerasRoute = AppCarrerasRouteImport.update({
+  id: '/carreras',
+  path: '/carreras',
   getParentRoute: () => AppRoute,
 } as any)
 const AppCargaImagenesRoute = AppCargaImagenesRouteImport.update({
@@ -245,8 +269,11 @@ export interface FileRoutesByFullPath {
   '/sesion-vencida': typeof SesionVencidaRoute
   '/app/auditoria': typeof AppAuditoriaRoute
   '/app/carga-imagenes': typeof AppCargaImagenesRoute
+  '/app/carreras': typeof AppCarrerasRoute
+  '/app/cohortes': typeof AppCohortesRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/dashboard-resultados': typeof AppDashboardResultadosRoute
+  '/app/grupos': typeof AppGruposRoute
   '/app/instrumentos': typeof AppInstrumentosRouteWithChildren
   '/app/participantes': typeof AppParticipantesRouteWithChildren
   '/app/reportes': typeof AppReportesRoute
@@ -255,6 +282,7 @@ export interface FileRoutesByFullPath {
   '/app/revision-manual': typeof AppRevisionManualRoute
   '/app/roles': typeof AppRolesRoute
   '/app/sesiones': typeof AppSesionesRouteWithChildren
+  '/app/sexos': typeof AppSexosRoute
   '/app/usuarios': typeof AppUsuariosRoute
   '/evaluacion/$token': typeof EvaluacionTokenRouteWithChildren
   '/evaluacion/acceso': typeof EvaluacionAccesoRoute
@@ -283,8 +311,11 @@ export interface FileRoutesByTo {
   '/sesion-vencida': typeof SesionVencidaRoute
   '/app/auditoria': typeof AppAuditoriaRoute
   '/app/carga-imagenes': typeof AppCargaImagenesRoute
+  '/app/carreras': typeof AppCarrerasRoute
+  '/app/cohortes': typeof AppCohortesRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/dashboard-resultados': typeof AppDashboardResultadosRoute
+  '/app/grupos': typeof AppGruposRoute
   '/app/instrumentos': typeof AppInstrumentosRouteWithChildren
   '/app/participantes': typeof AppParticipantesRouteWithChildren
   '/app/reportes': typeof AppReportesRoute
@@ -292,6 +323,7 @@ export interface FileRoutesByTo {
   '/app/resultados': typeof AppResultadosRouteWithChildren
   '/app/revision-manual': typeof AppRevisionManualRoute
   '/app/roles': typeof AppRolesRoute
+  '/app/sexos': typeof AppSexosRoute
   '/app/usuarios': typeof AppUsuariosRoute
   '/evaluacion/acceso': typeof EvaluacionAccesoRoute
   '/app/instrumentos/$versionId': typeof AppInstrumentosVersionIdRouteWithChildren
@@ -320,8 +352,11 @@ export interface FileRoutesById {
   '/sesion-vencida': typeof SesionVencidaRoute
   '/app/auditoria': typeof AppAuditoriaRoute
   '/app/carga-imagenes': typeof AppCargaImagenesRoute
+  '/app/carreras': typeof AppCarrerasRoute
+  '/app/cohortes': typeof AppCohortesRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/dashboard-resultados': typeof AppDashboardResultadosRoute
+  '/app/grupos': typeof AppGruposRoute
   '/app/instrumentos': typeof AppInstrumentosRouteWithChildren
   '/app/participantes': typeof AppParticipantesRouteWithChildren
   '/app/reportes': typeof AppReportesRoute
@@ -330,6 +365,7 @@ export interface FileRoutesById {
   '/app/revision-manual': typeof AppRevisionManualRoute
   '/app/roles': typeof AppRolesRoute
   '/app/sesiones': typeof AppSesionesRouteWithChildren
+  '/app/sexos': typeof AppSexosRoute
   '/app/usuarios': typeof AppUsuariosRoute
   '/evaluacion/$token': typeof EvaluacionTokenRouteWithChildren
   '/evaluacion/acceso': typeof EvaluacionAccesoRoute
@@ -360,8 +396,11 @@ export interface FileRouteTypes {
     | '/sesion-vencida'
     | '/app/auditoria'
     | '/app/carga-imagenes'
+    | '/app/carreras'
+    | '/app/cohortes'
     | '/app/dashboard'
     | '/app/dashboard-resultados'
+    | '/app/grupos'
     | '/app/instrumentos'
     | '/app/participantes'
     | '/app/reportes'
@@ -370,6 +409,7 @@ export interface FileRouteTypes {
     | '/app/revision-manual'
     | '/app/roles'
     | '/app/sesiones'
+    | '/app/sexos'
     | '/app/usuarios'
     | '/evaluacion/$token'
     | '/evaluacion/acceso'
@@ -398,8 +438,11 @@ export interface FileRouteTypes {
     | '/sesion-vencida'
     | '/app/auditoria'
     | '/app/carga-imagenes'
+    | '/app/carreras'
+    | '/app/cohortes'
     | '/app/dashboard'
     | '/app/dashboard-resultados'
+    | '/app/grupos'
     | '/app/instrumentos'
     | '/app/participantes'
     | '/app/reportes'
@@ -407,6 +450,7 @@ export interface FileRouteTypes {
     | '/app/resultados'
     | '/app/revision-manual'
     | '/app/roles'
+    | '/app/sexos'
     | '/app/usuarios'
     | '/evaluacion/acceso'
     | '/app/instrumentos/$versionId'
@@ -434,8 +478,11 @@ export interface FileRouteTypes {
     | '/sesion-vencida'
     | '/app/auditoria'
     | '/app/carga-imagenes'
+    | '/app/carreras'
+    | '/app/cohortes'
     | '/app/dashboard'
     | '/app/dashboard-resultados'
+    | '/app/grupos'
     | '/app/instrumentos'
     | '/app/participantes'
     | '/app/reportes'
@@ -444,6 +491,7 @@ export interface FileRouteTypes {
     | '/app/revision-manual'
     | '/app/roles'
     | '/app/sesiones'
+    | '/app/sexos'
     | '/app/usuarios'
     | '/evaluacion/$token'
     | '/evaluacion/acceso'
@@ -540,6 +588,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppUsuariosRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/sexos': {
+      id: '/app/sexos'
+      path: '/sexos'
+      fullPath: '/app/sexos'
+      preLoaderRoute: typeof AppSexosRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/sesiones': {
       id: '/app/sesiones'
       path: '/sesiones'
@@ -596,6 +651,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppInstrumentosRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/grupos': {
+      id: '/app/grupos'
+      path: '/grupos'
+      fullPath: '/app/grupos'
+      preLoaderRoute: typeof AppGruposRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/dashboard-resultados': {
       id: '/app/dashboard-resultados'
       path: '/dashboard-resultados'
@@ -608,6 +670,20 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/app/dashboard'
       preLoaderRoute: typeof AppDashboardRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/cohortes': {
+      id: '/app/cohortes'
+      path: '/cohortes'
+      fullPath: '/app/cohortes'
+      preLoaderRoute: typeof AppCohortesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/carreras': {
+      id: '/app/carreras'
+      path: '/carreras'
+      fullPath: '/app/carreras'
+      preLoaderRoute: typeof AppCarrerasRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/carga-imagenes': {
@@ -814,8 +890,11 @@ const AppSesionesRouteWithChildren = AppSesionesRoute._addFileChildren(
 interface AppRouteChildren {
   AppAuditoriaRoute: typeof AppAuditoriaRoute
   AppCargaImagenesRoute: typeof AppCargaImagenesRoute
+  AppCarrerasRoute: typeof AppCarrerasRoute
+  AppCohortesRoute: typeof AppCohortesRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppDashboardResultadosRoute: typeof AppDashboardResultadosRoute
+  AppGruposRoute: typeof AppGruposRoute
   AppInstrumentosRoute: typeof AppInstrumentosRouteWithChildren
   AppParticipantesRoute: typeof AppParticipantesRouteWithChildren
   AppReportesRoute: typeof AppReportesRoute
@@ -824,14 +903,18 @@ interface AppRouteChildren {
   AppRevisionManualRoute: typeof AppRevisionManualRoute
   AppRolesRoute: typeof AppRolesRoute
   AppSesionesRoute: typeof AppSesionesRouteWithChildren
+  AppSexosRoute: typeof AppSexosRoute
   AppUsuariosRoute: typeof AppUsuariosRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppAuditoriaRoute: AppAuditoriaRoute,
   AppCargaImagenesRoute: AppCargaImagenesRoute,
+  AppCarrerasRoute: AppCarrerasRoute,
+  AppCohortesRoute: AppCohortesRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppDashboardResultadosRoute: AppDashboardResultadosRoute,
+  AppGruposRoute: AppGruposRoute,
   AppInstrumentosRoute: AppInstrumentosRouteWithChildren,
   AppParticipantesRoute: AppParticipantesRouteWithChildren,
   AppReportesRoute: AppReportesRoute,
@@ -840,6 +923,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppRevisionManualRoute: AppRevisionManualRoute,
   AppRolesRoute: AppRolesRoute,
   AppSesionesRoute: AppSesionesRouteWithChildren,
+  AppSexosRoute: AppSexosRoute,
   AppUsuariosRoute: AppUsuariosRoute,
 }
 

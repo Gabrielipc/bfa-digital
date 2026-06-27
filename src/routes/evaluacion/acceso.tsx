@@ -21,13 +21,12 @@ function EvaluacionAccesoRoute() {
     e.preventDefault();
     const token = tokenInput.trim();
     if (!token) {
-      setError("Por favor ingrese el código de acceso proporcionado por su aplicador.");
+      setError("Por favor ingrese el codigo de acceso proporcionado por su aplicador.");
       return;
     }
 
-    // El token generalmente tiene un formato alfanumérico o guid, realizamos una validación simple en cliente
-    if (token.length < 4) {
-      setError("El código ingresado es demasiado corto.");
+    if (!/^\d+-.+/.test(token)) {
+      setError("El codigo debe tener el formato assignmentId-token.");
       return;
     }
 
@@ -41,10 +40,10 @@ function EvaluacionAccesoRoute() {
           <div className="flex justify-center mb-6">
             <Brand />
           </div>
-          
-          <h1 className="text-2xl font-semibold text-primary text-center">Acceso a Evaluación</h1>
+
+          <h1 className="text-2xl font-semibold text-primary text-center">Acceso a Evaluacion</h1>
           <p className="text-sm text-muted-foreground text-center mt-1">
-            Ingrese el código de acceso personal que le brindó su aplicador para iniciar su sesión de pruebas.
+            Ingrese el codigo de acceso personal que le brindo su aplicador para iniciar su sesion de pruebas.
           </p>
 
           {error && (
@@ -56,12 +55,12 @@ function EvaluacionAccesoRoute() {
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="token" className="sr-only">Código de Acceso</Label>
+              <Label htmlFor="token" className="sr-only">Codigo de Acceso</Label>
               <div className="relative">
                 <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="token"
-                  placeholder="Ej. ABCD-1234 o token único"
+                  placeholder="Ej. 123-ABCD"
                   value={tokenInput}
                   onChange={(e) => {
                     setTokenInput(e.target.value);

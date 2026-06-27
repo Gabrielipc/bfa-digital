@@ -2,7 +2,8 @@ import { ReactNode } from "react";
 import { Brand } from "./brand";
 import {
   LayoutDashboard, Users, ClipboardList, Activity, FileBarChart,
-  Settings2, ImageUp, ShieldCheck, UserCog, ListChecks, LogOut, Bell, Search
+  Settings2, ShieldCheck, UserCog, LogOut, Bell, Search,
+  BookOpen, Layers, Calendar
 } from "lucide-react";
 import { Input } from "./ui/input";
 import { Avatar, AvatarFallback } from "./ui/avatar";
@@ -12,7 +13,8 @@ import { Button } from "./ui/button";
 export type ViewKey =
   | "dashboard" | "session-create" | "sessions-monitor" | "participants"
   | "instruments" | "image-upload" | "review-tray" | "results"
-  | "results-dashboard" | "reports" | "audit" | "users";
+  | "results-dashboard" | "reports" | "audit" | "users"
+  | "carreras" | "grupos" | "cohortes" | "sexos";
 
 const NAV: { group: string; items: { key: ViewKey; label: string; icon: any; roles: string[] }[] }[] = [
   {
@@ -32,9 +34,7 @@ const NAV: { group: string; items: { key: ViewKey; label: string; icon: any; rol
   {
     group: "Instrumentos",
     items: [
-      { key: "instruments", label: "Configuración de pruebas", icon: Settings2, roles: ["psicologo", "admin"] },
-      { key: "image-upload", label: "Carga de imágenes", icon: ImageUp, roles: ["psicologo", "admin"] },
-      { key: "review-tray", label: "Revisión manual", icon: ListChecks, roles: ["psicologo", "admin"] },
+      { key: "instruments", label: "Instrumentos", icon: Settings2, roles: ["psicologo", "admin"] },
     ],
   },
   {
@@ -50,6 +50,15 @@ const NAV: { group: string; items: { key: ViewKey; label: string; icon: any; rol
     items: [
       { key: "audit", label: "Auditoría", icon: ShieldCheck, roles: ["admin"] },
       { key: "users", label: "Usuarios y roles", icon: UserCog, roles: ["admin"] },
+    ],
+  },
+  {
+    group: "Catálogos",
+    items: [
+      { key: "carreras", label: "Carreras", icon: BookOpen, roles: ["aplicador", "psicologo", "admin"] },
+      { key: "grupos", label: "Grupos Académicos", icon: Layers, roles: ["aplicador", "psicologo", "admin"] },
+      { key: "cohortes", label: "Cohortes", icon: Calendar, roles: ["aplicador", "psicologo", "admin"] },
+      { key: "sexos", label: "Sexos", icon: Users, roles: ["aplicador", "psicologo", "admin"] },
     ],
   },
 ];

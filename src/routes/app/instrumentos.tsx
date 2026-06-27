@@ -1,6 +1,14 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { InstrumentsScreen } from "../../app/components/screens/admin-screens";
+import { createFileRoute, Outlet, useRouterState } from "@tanstack/react-router";
+import { InstrumentBuilderScreen } from "../../app/components/instruments/instrument-builder";
 
 export const Route = createFileRoute("/app/instrumentos")({
-  component: InstrumentsScreen,
+  component: InstrumentosRoute,
 });
+
+function InstrumentosRoute() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  if (pathname !== "/app/instrumentos") {
+    return <Outlet />;
+  }
+  return <InstrumentBuilderScreen />;
+}

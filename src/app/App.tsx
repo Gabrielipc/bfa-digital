@@ -7,6 +7,7 @@ import {
   InstrumentsScreen, ImageUploadScreen, ReviewTrayScreen, ResultsScreen,
   ResultsDashboardScreen, ReportsScreen, AuditScreen, UsersScreen,
 } from "./components/screens/admin-screens";
+import { CarrerasScreen, GruposScreen, SexosScreen, CohortesScreen } from "./components/screens/catalog-screens";
 import { Button } from "./components/ui/button";
 import { Plus, Download } from "lucide-react";
 
@@ -25,6 +26,10 @@ const TITLES: Record<ViewKey, { t: string; s?: string }> = {
   "reports": { t: "Centro de reportes", s: "Exportación PDF, Excel y CSV" },
   "audit": { t: "Auditoría", s: "Registro de acciones del sistema" },
   "users": { t: "Usuarios, roles y permisos", s: "Gestión de cuentas internas" },
+  "carreras": { t: "Catálogo de Carreras", s: "Gestión de carreras académicas disponibles" },
+  "grupos": { t: "Catálogo de Grupos", s: "Gestión de grupos académicos" },
+  "cohortes": { t: "Catálogo de Cohortes", s: "Gestión de cohortes por año y período" },
+  "sexos": { t: "Catálogo de Sexos", s: "Gestión de opciones biológicas y de género" },
 };
 
 export default function App() {
@@ -71,6 +76,10 @@ export default function App() {
       {view === "reports" && <ReportsScreen />}
       {view === "audit" && <AuditScreen />}
       {view === "users" && <UsersScreen />}
+      {view === "carreras" && <CarrerasScreen />}
+      {view === "grupos" && <GruposScreen />}
+      {view === "cohortes" && <CohortesScreen />}
+      {view === "sexos" && <SexosScreen />}
     </AdminLayout>
   );
 }

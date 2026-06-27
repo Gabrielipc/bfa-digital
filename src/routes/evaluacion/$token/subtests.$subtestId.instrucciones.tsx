@@ -3,7 +3,6 @@ import { useState } from "react";
 import { Brand } from "../../../app/components/brand";
 import { Button } from "../../../app/components/ui/button";
 import { Card, CardContent } from "../../../app/components/ui/card";
-import { Badge } from "../../../app/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "../../../app/components/ui/alert";
 import { Checkbox } from "../../../app/components/ui/checkbox";
 import { Separator } from "../../../app/components/ui/separator";
@@ -17,20 +16,20 @@ export const Route = createFileRoute("/evaluacion/$token/subtests/$subtestId/ins
 
 const SUBTEST_DESCS: Record<string, { name: string; desc: string; details: string }> = {
   figuras: {
-    name: "Figuras idénticas",
-    desc: "En este subtest se le presentará una figura modelo al centro de la pantalla. A continuación verá cuatro opciones de respuesta. Debe buscar y seleccionar aquella figura que sea exactamente igual a la figura modelo.",
-    details: "La velocidad y la precisión son muy importantes. Asegúrese de observar cuidadosamente cada detalle como líneas, curvas y sombras de la figura."
+    name: "Figuras identicas",
+    desc: "En este subtest se le presentara una figura modelo al centro de la pantalla. A continuacion vera cuatro opciones de respuesta. Debe buscar y seleccionar aquella figura que sea exactamente igual a la figura modelo.",
+    details: "La velocidad y la precision son muy importantes. Asegurese de observar cuidadosamente cada detalle como lineas, curvas y sombras de la figura.",
   },
   desplazamiento: {
     name: "Desplazamiento",
-    desc: "En esta prueba se le mostrará una figura original y se le presentará una indicación sobre cómo se desplaza o gira. Deberá elegir la opción que represente adecuadamente la posición final de la figura.",
-    details: "El desplazamiento puede realizarse en dirección horizontal, vertical o rotacional. Visualice el movimiento mentalmente antes de marcar su elección."
+    desc: "En esta prueba se le mostrara una figura original y se le presentara una indicacion sobre como se desplaza o gira. Debera elegir la opcion que represente adecuadamente la posicion final de la figura.",
+    details: "El desplazamiento puede realizarse en direccion horizontal, vertical o rotacional. Visualice el movimiento mentalmente antes de marcar su eleccion.",
   },
   espacial: {
     name: "Espacial",
-    desc: "Este subtest evalúa su capacidad de orientación espacial. Se le mostrará una figura tridimensional u orientada en un espacio plano, y deberá reconocer cuál de las opciones corresponde a la misma figura vista desde otra perspectiva o rotación.",
-    details: "Preste atención a la rotación angular y a la posición relativa de los componentes de la figura para no confundirse con rotaciones espejo."
-  }
+    desc: "Este subtest evalua su capacidad de orientacion espacial. Se le mostrara una figura tridimensional u orientada en un espacio plano, y debera reconocer cual de las opciones corresponde a la misma figura vista desde otra perspectiva o rotacion.",
+    details: "Preste atencion a la rotacion angular y a la posicion relativa de los componentes de la figura para no confundirse con rotaciones espejo.",
+  },
 };
 
 function SubtestInstruccionesRoute() {
@@ -45,35 +44,36 @@ function SubtestInstruccionesRoute() {
 
   if (!accessData) return null;
 
-  const subtest = accessData.subtests.find((s) => s.id === subtestId);
-  const desc = SUBTEST_DESCS[subtestId] || { name: subtest?.name || "Subtest BFA", desc: "Instrucciones de aplicación.", details: "" };
+  const subtest = accessData.subtests.find((s) => s.slug === subtestId || s.id === subtestId);
+  const desc = SUBTEST_DESCS[subtestId] || {
+    name: subtest?.name || "Subtest BFA",
+    desc: subtest?.instructions || subtest?.description || "Instrucciones de aplicacion.",
+    details: subtest?.description && subtest?.instructions ? subtest.description : "",
+  };
 
   const handleStart = async () => {
     if (!confirmed) return;
     setLoading(true);
     try {
       await participantService.startSubtest(token, subtestId);
-      
-      // Actualizar el estado de Zustand
+
       setActiveSubtestId(subtestId);
       if (subtest?.timeLimitSeconds) {
         setTimeLeft(subtest.timeLimitSeconds);
       }
-      
-      // Hacemos que el accessData refleje que está EN_PROGRESO en cliente de inmediato
-      if (accessData) {
-        const updatedSubtests = accessData.subtests.map(s => 
-          s.id === subtestId ? { ...s, status: "EN_PROGRESO" as const } : s
-        );
-        useEvaluationStore.getState().setAccessData({
-          ...accessData,
-          subtests: updatedSubtests
-        });
-      }
-      
-      // Redirigir al primer reactivo
+
+      const updatedSubtests = accessData.subtests.map((candidate) =>
+        candidate.slug === subtestId || candidate.id === subtestId
+          ? { ...candidate, status: "EN_PROGRESO" as const }
+          : candidate,
+      );
+      useEvaluationStore.getState().setAccessData({
+        ...accessData,
+        subtests: updatedSubtests,
+      });
+
       navigate({ to: `/evaluacion/${token}/subtests/${subtestId}/items/it-1` });
-    } catch (error) {
+    } catch {
       alert("Error al iniciar el subtest. Por favor contacte al aplicador.");
     } finally {
       setLoading(false);
@@ -85,10 +85,10 @@ function SubtestInstruccionesRoute() {
       <Card className="w-full max-w-2xl border-0 shadow-lg bg-white">
         <CardContent className="p-8">
           <div className="text-xs text-muted-foreground font-semibold uppercase tracking-wide">
-            Subtest de Evaluación
+            Subtest de Evaluacion
           </div>
           <h1 className="text-2xl font-bold text-primary mt-1">{desc.name}</h1>
-          
+
           <Separator className="my-5" />
 
           <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
@@ -98,12 +98,12 @@ function SubtestInstruccionesRoute() {
             <div className="grid grid-cols-2 gap-4 mt-6">
               <div className="rounded-md border p-3 bg-muted/10">
                 <div className="text-xs text-muted-foreground">Reactivos en la prueba</div>
-                <div className="text-lg font-bold text-foreground mt-1">{subtest?.totalItems || 0} Ítems</div>
+                <div className="text-lg font-bold text-foreground mt-1">{subtest?.totalItems || 0} Items</div>
               </div>
               <div className="rounded-md border p-3 bg-muted/10">
-                <div className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> Tiempo límite</div>
+                <div className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> Tiempo limite</div>
                 <div className="text-lg font-bold text-foreground mt-1">
-                  {subtest?.timeLimitSeconds ? `${subtest.timeLimitSeconds / 60} minutos` : "Sin límite"}
+                  {subtest?.timeLimitSeconds ? `${subtest.timeLimitSeconds / 60} minutos` : "Sin limite"}
                 </div>
               </div>
             </div>
@@ -111,16 +111,16 @@ function SubtestInstruccionesRoute() {
 
           <Alert className="mt-6 border-amber-200 bg-amber-50/50">
             <AlertTriangle className="h-4 w-4 text-amber-800" />
-            <AlertTitle className="text-amber-800 font-semibold">El temporizador iniciará de inmediato</AlertTitle>
+            <AlertTitle className="text-amber-800 font-semibold">El temporizador iniciara de inmediato</AlertTitle>
             <AlertDescription className="text-amber-900 text-xs mt-1">
-              Al presionar "Iniciar subtest", el tiempo límite comenzará a correr. No podrá pausar el tiempo ni recargar la prueba para reiniciarlo.
+              Al presionar "Iniciar subtest", el tiempo limite comenzara a correr. No podra pausar el tiempo ni recargar la prueba para reiniciarlo.
             </AlertDescription>
           </Alert>
 
           <div className="mt-6 flex items-center gap-2">
             <Checkbox id="confirm" checked={confirmed} onCheckedChange={(v) => setConfirmed(!!v)} />
             <label htmlFor="confirm" className="text-xs text-foreground cursor-pointer select-none font-semibold">
-              He leído y comprendido las instrucciones de este subtest.
+              He leido y comprendido las instrucciones de este subtest.
             </label>
           </div>
 
@@ -130,10 +130,7 @@ function SubtestInstruccionesRoute() {
                 <ArrowLeft className="h-4 w-4 mr-1" /> Regresar
               </Link>
             </Button>
-            <Button 
-              disabled={!confirmed || loading}
-              onClick={handleStart}
-            >
+            <Button disabled={!confirmed || loading} onClick={handleStart}>
               {loading ? "Cargando..." : (
                 <><Play className="h-3.5 w-3.5 mr-1.5 fill-current" /> Iniciar subtest</>
               )}

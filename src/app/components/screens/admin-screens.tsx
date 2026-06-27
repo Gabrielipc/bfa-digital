@@ -1,6 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useAdminStore } from "../../../store/adminStore";
+import { instrumentService } from "../../../api/instrumentService";
+import { resultsService } from "../../../api/resultsService";
+import { adminService } from "../../../api/adminService";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -17,6 +20,7 @@ import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { Separator } from "../ui/separator";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
+import { SearchableCombobox } from "../ui/searchable-combobox";
 import {
   Activity, Users, ClipboardList, FileBarChart, ShieldCheck, ImageUp, ListChecks,
   Plus, Copy, RotateCw, Filter, Download, FileText, FileSpreadsheet, Search, MoreHorizontal,
@@ -85,24 +89,39 @@ export function DashboardScreen() {
   );
 }
 
+const EMPTY_ARRAY: any[] = [];
+
 /* ------------------------- Session Create (Aplicador) ------------------------- */
 export function SessionCreateScreen() {
   const navigate = useNavigate();
   const participantsList = useAdminStore((s) => s.participants);
   const createSession = useAdminStore((s) => s.createSession);
-  const publishedVersions = useAdminStore((s) => s.publishedVersions);
   const versionSubtests = useAdminStore((s) => s.versionSubtests);
-  const fetchPublishedVersions = useAdminStore((s) => s.fetchPublishedVersions);
   const fetchVersionSubtests = useAdminStore((s) => s.fetchVersionSubtests);
   const fetchParticipants = useAdminStore((s) => s.fetchParticipants);
+  const carreras = useAdminStore((s) => s.carreras);
+  const gruposAcademicos = useAdminStore((s) => s.gruposAcademicos);
+  const cohortes = useAdminStore((s) => s.cohortes);
+  const fetchCarreras = useAdminStore((s) => s.fetchCarreras);
+  const fetchGrupos = useAdminStore((s) => s.fetchGrupos);
+  const fetchCohortes = useAdminStore((s) => s.fetchCohortes);
 
   // Form states
-  const [sessionName, setSessionName] = useState("SES-2026-06-D · Psicología III");
-  const [groupName, setGroupName] = useState("Psicología — 3er año");
-  const [date, setDate] = useState("2026-06-10");
-  const [time, setTime] = useState("14:00");
-  const [location, setLocation] = useState("Laboratorio cognitivo · UAM");
-  const [selectedVersionId, setSelectedVersionId] = useState<number | "">("");
+  const [sessionName, setSessionName] = useState("");
+  const [selectedCarreraId, setSelectedCarreraId] = useState("");
+  const [selectedCohorteId, setSelectedCohorteId] = useState("");
+  const [selectedGrupoId, setSelectedGrupoId] = useState("");
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+  const [location, setLocation] = useState("");
+  const [tests, setTests] = useState<any[]>([]);
+  const [versions, setVersions] = useState<any[]>([]);
+  const [selectedTestId, setSelectedTestId] = useState("");
+  const [selectedVersionId, setSelectedVersionId] = useState("");
+  const [loadingTests, setLoadingTests] = useState(false);
+  const [loadingVersions, setLoadingVersions] = useState(false);
+  const [instrumentError, setInstrumentError] = useState<string | null>(null);
 
   const [selectedSubtestIds, setSelectedSubtestIds] = useState<number[]>([]);
   const [assignedIds, setAssignedIds] = useState<string[]>([]);
@@ -111,13 +130,107 @@ export function SessionCreateScreen() {
   const [sessionCode, setSessionCode] = useState("");
   const [copiedTokenIdx, setCopiedTokenIdx] = useState<number | null>(null);
   const [newlyCreatedSessionId, setNewlyCreatedSessionId] = useState<string>("");
+  const sessionAssignments = useAdminStore((s) =>
+    newlyCreatedSessionId ? s.assignments[newlyCreatedSessionId] : undefined
+  ) || EMPTY_ARRAY;
 
   useEffect(() => {
-    fetchPublishedVersions();
     fetchParticipants();
+    fetchCarreras();
+    fetchCohortes();
+    fetchGrupos();
+    setLoadingTests(true);
+    instrumentService.getTests()
+      .then((items) => {
+        setTests(items);
+        setInstrumentError(null);
+      })
+      .catch((err: any) => {
+        setInstrumentError(err.message || "No se pudieron cargar los tests.");
+      })
+      .finally(() => setLoadingTests(false));
   }, []);
 
-  const currentSubtests = selectedVersionId ? versionSubtests[String(selectedVersionId)] || [] : [];
+  const currentSubtests = useMemo(() => {
+    return selectedVersionId ? versionSubtests[String(selectedVersionId)] || EMPTY_ARRAY : EMPTY_ARRAY;
+  }, [selectedVersionId, versionSubtests]);
+  const activeCarreras = useMemo(
+    () => carreras.filter((c) => c.estado === "ACTIVO" && c.id != null),
+    [carreras],
+  );
+  const activeCohortes = useMemo(
+    () => cohortes.filter((c) => c.estado === "ACTIVO" && c.id != null),
+    [cohortes],
+  );
+  const activeGrupos = useMemo(
+    () => gruposAcademicos.filter((g) => g.estado === "ACTIVO" && g.id != null),
+    [gruposAcademicos],
+  );
+  const selectedCarrera = activeCarreras.find((c) => String(c.id) === selectedCarreraId);
+  const selectedCohorte = activeCohortes.find((c) => String(c.id) === selectedCohorteId);
+  const selectedGrupo = activeGrupos.find((g) => String(g.id) === selectedGrupoId);
+  const testOptions = tests.map((test) => ({
+    value: String(test.id),
+    label: test.nombreTest || test.name || test.codigoTest,
+    description: [test.codigoTest, test.estado].filter(Boolean).join(" · "),
+  }));
+  const versionOptions = versions.map((version) => ({
+    value: String(version.id),
+    label: `v${version.numeroVersion || version.number}`,
+    description: [version.estado || version.status, version.creadoEn || version.createdAt].filter(Boolean).join(" · "),
+  }));
+  const carreraOptions = activeCarreras.map((c) => ({
+    value: String(c.id),
+    label: c.nombreCarrera,
+    description: c.codigoCarrera,
+  }));
+  const cohorteOptions = activeCohortes.map((c) => ({
+    value: String(c.id),
+    label: c.nombreCohorte,
+    description: [c.codigoCohorte, c.anio, c.periodo].filter(Boolean).join(" · "),
+  }));
+  const grupoOptions = activeGrupos.map((g) => ({
+    value: String(g.id),
+    label: g.nombreGrupo || g.codigoGrupo,
+    description: [g.codigoGrupo, g.carrera?.nombreCarrera].filter(Boolean).join(" · "),
+  }));
+  const sessionScope = [
+    selectedCarrera?.nombreCarrera,
+    selectedCohorte?.nombreCohorte,
+    selectedGrupo?.nombreGrupo || selectedGrupo?.codigoGrupo,
+  ].filter(Boolean).join(" · ");
+  const visibleParticipants = useMemo(() => {
+    return participantsList.filter((p) => {
+      const matchesCarrera = !selectedCarreraId || String(p.carreraId) === selectedCarreraId;
+      const matchesCohorte = !selectedCohorteId || String(p.cohorteId) === selectedCohorteId;
+      const matchesGrupo = !selectedGrupoId || String(p.grupoId) === selectedGrupoId;
+      return matchesCarrera && matchesCohorte && matchesGrupo;
+    });
+  }, [participantsList, selectedCarreraId, selectedCohorteId, selectedGrupoId]);
+
+  useEffect(() => {
+    if (selectedGrupo?.carrera?.id && selectedCarreraId !== String(selectedGrupo.carrera.id)) {
+      setSelectedCarreraId(String(selectedGrupo.carrera.id));
+    }
+  }, [selectedGrupo, selectedCarreraId]);
+
+  useEffect(() => {
+    setSelectedVersionId("");
+    setVersions([]);
+    setSelectedSubtestIds([]);
+    if (!selectedTestId) return;
+
+    setLoadingVersions(true);
+    instrumentService.getVersions(selectedTestId)
+      .then((items) => {
+        setVersions(items);
+        setInstrumentError(null);
+      })
+      .catch((err: any) => {
+        setInstrumentError(err.message || "No se pudieron cargar las versiones del test.");
+      })
+      .finally(() => setLoadingVersions(false));
+  }, [selectedTestId]);
 
   useEffect(() => {
     if (selectedVersionId) {
@@ -126,16 +239,31 @@ export function SessionCreateScreen() {
   }, [selectedVersionId]);
 
   useEffect(() => {
-    if (currentSubtests.length > 0) {
-      setSelectedSubtestIds(currentSubtests.map((s) => s.id));
-    } else {
-      setSelectedSubtestIds([]);
-    }
+    const ids = currentSubtests.map((s) => s.id);
+    setSelectedSubtestIds((prev) => {
+      if (prev.length === ids.length && prev.every((id, idx) => id === ids[idx])) {
+        return prev;
+      }
+      return ids;
+    });
   }, [currentSubtests]);
 
-  const sessionAssignments = newlyCreatedSessionId ? useAdminStore.getState().assignments[newlyCreatedSessionId] || [] : [];
-
   const handleGenerate = async () => {
+    if (!sessionName.trim()) {
+      alert("Debes indicar el nombre de la sesión.");
+      return;
+    }
+
+    if (!date || !time || !endTime) {
+      alert("Debes indicar fecha, hora de apertura y hora de cierre.");
+      return;
+    }
+
+    if (!selectedTestId) {
+      alert("Debes seleccionar un test.");
+      return;
+    }
+
     if (!selectedVersionId) {
       alert("Debes seleccionar una versión de test.");
       return;
@@ -152,20 +280,20 @@ export function SessionCreateScreen() {
     }
 
     // Generar código único para la sesión
-    const newCode = `SES-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+    const newCode = `SES-${date.replaceAll("-", "")}-${Math.floor(1000 + Math.random() * 9000)}`;
     setSessionCode(newCode);
 
     const scheduledStart = `${date}T${time}:00`;
-    const scheduledEnd = `${date}T23:59:59`;
+    const scheduledEnd = `${date}T${endTime}:00`;
 
     const subtestConfigs = selectedSubtestIds.map((subtestId, index) => {
       const orig = currentSubtests.find((s) => s.id === subtestId);
       return {
         subtestId,
         order: index + 1,
-        timeLimitSeconds: orig?.tiempoLimiteSegundos || 300,
-        randomizeItems: orig?.permiteAleatorizarItems || false,
-        randomizeOptions: orig?.permiteAleatorizarOpciones || false,
+        timeLimitSeconds: orig?.tiempoLimiteSegundos && orig.tiempoLimiteSegundos > 0 ? orig.tiempoLimiteSegundos : undefined,
+        randomizeItems: Boolean(orig?.permiteAleatorizarItems),
+        randomizeOptions: Boolean(orig?.permiteAleatorizarOpciones),
       };
     });
 
@@ -175,7 +303,7 @@ export function SessionCreateScreen() {
           versionTestId: Number(selectedVersionId),
           code: newCode,
           name: sessionName,
-          description: groupName,
+          description: sessionScope || "Sin segmentacion academica",
           scheduledStart,
           scheduledEnd,
           location,
@@ -209,8 +337,35 @@ export function SessionCreateScreen() {
             <Field label="Nombre de sesión">
               <Input value={sessionName} onChange={(e) => setSessionName(e.target.value)} />
             </Field>
-            <Field label="Grupo / carrera">
-              <Input value={groupName} onChange={(e) => setGroupName(e.target.value)} />
+            <Field label="Carrera">
+              <SearchableCombobox
+                value={selectedCarreraId}
+                onValueChange={setSelectedCarreraId}
+                options={carreraOptions}
+                placeholder="Seleccione carrera"
+                searchPlaceholder="Buscar carrera..."
+                emptyMessage="No hay carreras activas."
+              />
+            </Field>
+            <Field label="Cohorte">
+              <SearchableCombobox
+                value={selectedCohorteId}
+                onValueChange={setSelectedCohorteId}
+                options={cohorteOptions}
+                placeholder="Seleccione cohorte"
+                searchPlaceholder="Buscar cohorte..."
+                emptyMessage="No hay cohortes activas."
+              />
+            </Field>
+            <Field label="Grupo">
+              <SearchableCombobox
+                value={selectedGrupoId}
+                onValueChange={setSelectedGrupoId}
+                options={grupoOptions}
+                placeholder="Seleccione grupo"
+                searchPlaceholder="Buscar grupo..."
+                emptyMessage="No hay grupos activos."
+              />
             </Field>
             <Field label="Fecha">
               <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
@@ -218,23 +373,50 @@ export function SessionCreateScreen() {
             <Field label="Hora de apertura">
               <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
             </Field>
+            <Field label="Hora de cierre">
+              <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+            </Field>
             <Field label="Ubicación">
               <Input value={location} onChange={(e) => setLocation(e.target.value)} />
             </Field>
-            <Field label="Versión de Test">
-              <Select value={String(selectedVersionId)} onValueChange={(val) => setSelectedVersionId(Number(val))}>
-                <SelectTrigger><SelectValue placeholder="Seleccione versión..." /></SelectTrigger>
-                <SelectContent>
-                  {publishedVersions.map((v) => (
-                    <SelectItem key={v.id} value={String(v.id)}>
-                      v{v.numeroVersion} ({v.estado})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <Field label="Test">
+              <SearchableCombobox
+                value={selectedTestId}
+                onValueChange={setSelectedTestId}
+                options={testOptions}
+                placeholder={loadingTests ? "Cargando tests..." : "Seleccione test"}
+                searchPlaceholder="Buscar test..."
+                emptyMessage="No hay tests reales disponibles."
+                disabled={loadingTests}
+              />
+            </Field>
+            <Field label="Versión del test">
+              <SearchableCombobox
+                value={selectedVersionId}
+                onValueChange={setSelectedVersionId}
+                options={versionOptions}
+                placeholder={
+                  !selectedTestId
+                    ? "Seleccione un test primero"
+                    : loadingVersions
+                      ? "Cargando versiones..."
+                      : "Seleccione versión"
+                }
+                searchPlaceholder="Buscar versión..."
+                emptyMessage="No hay versiones para este test."
+                disabled={!selectedTestId || loadingVersions}
+              />
             </Field>
           </CardContent>
         </Card>
+
+        {instrumentError ? (
+          <Alert className="border-destructive/30 bg-destructive/5 text-destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>No se pudo cargar el instrumento</AlertTitle>
+            <AlertDescription className="text-xs">{instrumentError}</AlertDescription>
+          </Alert>
+        ) : null}
 
         <Card className="border-0 shadow-sm">
           <CardHeader>
@@ -292,15 +474,19 @@ export function SessionCreateScreen() {
               <DialogContent className="max-w-md max-h-[80vh] flex flex-col">
                 <DialogHeader>
                   <DialogTitle>Asignar Participantes</DialogTitle>
-                  <DialogDescription>Seleccione los participantes que tomarán la prueba.</DialogDescription>
+                  <DialogDescription>Seleccione los participantes que tomarán la prueba según los filtros de la sesión.</DialogDescription>
                 </DialogHeader>
                 <div className="flex-1 overflow-y-auto space-y-2 py-4">
                   {participantsList.length === 0 ? (
                     <div className="text-center py-6 text-sm text-muted-foreground">
                       No hay participantes registrados.
                     </div>
+                  ) : visibleParticipants.length === 0 ? (
+                    <div className="text-center py-6 text-sm text-muted-foreground">
+                      No hay participantes para la carrera, cohorte o grupo seleccionados.
+                    </div>
                   ) : (
-                    participantsList.map((p) => {
+                    visibleParticipants.map((p) => {
                       const isChecked = assignedIds.includes(p.id);
                       return (
                         <label key={p.id} className="flex items-center gap-3 rounded-md border p-2.5 cursor-pointer hover:bg-muted/40 transition">
@@ -316,7 +502,7 @@ export function SessionCreateScreen() {
                           />
                           <div className="flex-1 min-w-0">
                             <div className="text-sm font-semibold truncate text-foreground">{p.name}</div>
-                            <div className="text-xs text-muted-foreground font-medium">{p.id} · {p.carrera} · {p.grupo}</div>
+                            <div className="text-xs text-muted-foreground font-medium">{p.id} · {p.carrera} · {p.cohorte} · {p.grupo}</div>
                           </div>
                         </label>
                       );
@@ -348,7 +534,7 @@ export function SessionCreateScreen() {
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-semibold text-foreground truncate">{p.name}</div>
-                        <div className="text-xs text-muted-foreground font-medium">{p.id} · {p.carrera} · {p.grupo}</div>
+                        <div className="text-xs text-muted-foreground font-medium">{p.id} · {p.carrera} · {p.cohorte} · {p.grupo}</div>
                       </div>
                       <Button
                         variant="ghost"
@@ -565,38 +751,103 @@ export function ParticipantsScreen() {
   const list = useAdminStore((s) => s.participants);
   const addParticipant = useAdminStore((s) => s.addParticipant);
   const fetchParticipants = useAdminStore((s) => s.fetchParticipants);
+  const carreras = useAdminStore((s) => s.carreras);
+  const gruposAcademicos = useAdminStore((s) => s.gruposAcademicos);
+  const cohortes = useAdminStore((s) => s.cohortes);
+  const sexos = useAdminStore((s) => s.sexos);
+  const fetchCarreras = useAdminStore((s) => s.fetchCarreras);
+  const fetchGrupos = useAdminStore((s) => s.fetchGrupos);
+  const fetchCohortes = useAdminStore((s) => s.fetchCohortes);
+  const fetchSexos = useAdminStore((s) => s.fetchSexos);
 
   useEffect(() => {
     fetchParticipants();
+    fetchCarreras();
+    fetchGrupos();
+    fetchCohortes();
+    fetchSexos();
   }, []);
 
   // Filter states
   const [searchQuery, setSearchQuery] = useState("");
-  const [careerFilter, setCareerFilter] = useState("all");
+  const [careerFilter, setCareerFilter] = useState("");
 
   // Form states
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
-  const [age, setAge] = useState("");
-  const [sex, setSex] = useState<"F" | "M" | "O">("F");
-  const [carrera, setCarrera] = useState("");
-  const [grupo, setGrupo] = useState("");
+  const [birthDate, setBirthDate] = useState("");
+  const [selectedSexoId, setSelectedSexoId] = useState("");
+  const [selectedCarreraId, setSelectedCarreraId] = useState("");
+  const [selectedCohorteId, setSelectedCohorteId] = useState("");
+  const [selectedGrupoId, setSelectedGrupoId] = useState("");
+  const activeCarreras = useMemo(
+    () => carreras.filter((c) => c.estado === "ACTIVO" && c.id != null),
+    [carreras],
+  );
+  const activeCohortes = useMemo(
+    () => cohortes.filter((c) => c.estado === "ACTIVO" && c.id != null),
+    [cohortes],
+  );
+  const activeGrupos = useMemo(
+    () => gruposAcademicos.filter((g) => g.estado === "ACTIVO" && g.id != null),
+    [gruposAcademicos],
+  );
+  const activeSexos = useMemo(
+    () => sexos.filter((s) => s.estado === "ACTIVO" && s.id != null),
+    [sexos],
+  );
+  const carreraFilterOptions = activeCarreras.map((c) => ({
+    value: String(c.id),
+    label: c.nombreCarrera,
+    description: c.codigoCarrera,
+  }));
+  const carreraOptions = activeCarreras.map((c) => ({
+    value: String(c.id),
+    label: c.nombreCarrera,
+    description: c.codigoCarrera,
+  }));
+  const cohorteOptions = activeCohortes.map((c) => ({
+    value: String(c.id),
+    label: c.nombreCohorte,
+    description: [c.codigoCohorte, c.anio, c.periodo].filter(Boolean).join(" · "),
+  }));
+  const grupoOptions = activeGrupos.map((g) => ({
+    value: String(g.id),
+    label: g.nombreGrupo || g.codigoGrupo,
+    description: [g.codigoGrupo, g.carrera?.nombreCarrera].filter(Boolean).join(" · "),
+  }));
+  const sexoOptions = activeSexos.map((s) => ({
+    value: String(s.id),
+    label: s.nombre,
+    description: s.codigo,
+  }));
+  const selectedGrupo = activeGrupos.find((g) => String(g.id) === selectedGrupoId);
+
+  useEffect(() => {
+    if (selectedGrupo?.carrera?.id && selectedCarreraId !== String(selectedGrupo.carrera.id)) {
+      setSelectedCarreraId(String(selectedGrupo.carrera.id));
+    }
+  }, [selectedGrupo, selectedCarreraId]);
 
   const handleOpenDialog = () => {
-    // Generar código autoincrementable sugerido
-    const nextNum = list.length + 185;
-    setCode(`P-0${nextNum}`);
+    setCode("");
     setName("");
-    setAge("21");
-    setSex("F");
-    setCarrera("Psicología");
-    setGrupo("3A");
+    setBirthDate("");
+    setSelectedSexoId("");
+    setSelectedCarreraId("");
+    setSelectedCohorteId("");
+    setSelectedGrupoId("");
     setOpen(true);
   };
 
   const handleSaveParticipant = () => {
     if (!code || !name) {
       alert("El código y nombre son requeridos.");
+      return;
+    }
+
+    if (!selectedSexoId || !selectedCarreraId || !selectedCohorteId || !selectedGrupoId) {
+      alert("Debes seleccionar sexo, carrera, cohorte y grupo.");
       return;
     }
 
@@ -607,7 +858,12 @@ export function ParticipantsScreen() {
     addParticipant({
       code,
       firstNames,
-      lastNames
+      lastNames,
+      fechaNacimiento: birthDate || undefined,
+      sexoId: Number(selectedSexoId),
+      carreraId: Number(selectedCarreraId),
+      cohorteId: Number(selectedCohorteId),
+      grupoAcademicoId: Number(selectedGrupoId)
     }).catch(err => {
       alert("Error al registrar participante: " + err.message);
     });
@@ -618,9 +874,9 @@ export function ParticipantsScreen() {
   // Filtrado de participantes
   const filteredList = list.filter((p) => {
     const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          p.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           p.id.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCareer = careerFilter === "all" || 
-                          p.carrera.toLowerCase().includes(careerFilter.toLowerCase());
+    const matchesCareer = !careerFilter || String(p.carreraId) === careerFilter;
     return matchesSearch && matchesCareer;
   });
 
@@ -641,16 +897,16 @@ export function ParticipantsScreen() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Select value={careerFilter} onValueChange={setCareerFilter}>
-            <SelectTrigger className="w-44 h-9"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas las carreras</SelectItem>
-              <SelectItem value="psicologia">Psicología</SelectItem>
-              <SelectItem value="medicina">Medicina</SelectItem>
-              <SelectItem value="ingenieria">Ingeniería</SelectItem>
-              <SelectItem value="derecho">Derecho</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="w-52">
+            <SearchableCombobox
+              value={careerFilter}
+              onValueChange={setCareerFilter}
+              options={carreraFilterOptions}
+              placeholder="Todas las carreras"
+              searchPlaceholder="Buscar carrera..."
+              emptyMessage="No hay carreras activas."
+            />
+          </div>
           <Button onClick={handleOpenDialog} size="sm" className="h-9">
             <Plus className="h-4 w-4 mr-1" /> Nuevo Participante
           </Button>
@@ -668,24 +924,48 @@ export function ParticipantsScreen() {
                 <Field label="Nombre completo">
                   <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="ej: Juan Pérez" />
                 </Field>
-                <Field label="Edad">
-                  <Input type="number" value={age} onChange={(e) => setAge(e.target.value)} />
+                <Field label="Fecha de nacimiento">
+                  <Input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} />
                 </Field>
                 <Field label="Sexo">
-                  <Select value={sex} onValueChange={(v: any) => setSex(v)}>
-                    <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="F">Femenino</SelectItem>
-                      <SelectItem value="M">Masculino</SelectItem>
-                      <SelectItem value="O">Otro</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <SearchableCombobox
+                    value={selectedSexoId}
+                    onValueChange={setSelectedSexoId}
+                    options={sexoOptions}
+                    placeholder="Seleccione sexo"
+                    searchPlaceholder="Buscar sexo..."
+                    emptyMessage="No hay sexos activos."
+                  />
                 </Field>
                 <Field label="Carrera">
-                  <Input value={carrera} onChange={(e) => setCarrera(e.target.value)} placeholder="ej: Psicología" />
+                  <SearchableCombobox
+                    value={selectedCarreraId}
+                    onValueChange={setSelectedCarreraId}
+                    options={carreraOptions}
+                    placeholder="Seleccione carrera"
+                    searchPlaceholder="Buscar carrera..."
+                    emptyMessage="No hay carreras activas."
+                  />
+                </Field>
+                <Field label="Cohorte">
+                  <SearchableCombobox
+                    value={selectedCohorteId}
+                    onValueChange={setSelectedCohorteId}
+                    options={cohorteOptions}
+                    placeholder="Seleccione cohorte"
+                    searchPlaceholder="Buscar cohorte..."
+                    emptyMessage="No hay cohortes activas."
+                  />
                 </Field>
                 <Field label="Grupo">
-                  <Input value={grupo} onChange={(e) => setGrupo(e.target.value)} placeholder="ej: 3A" />
+                  <SearchableCombobox
+                    value={selectedGrupoId}
+                    onValueChange={setSelectedGrupoId}
+                    options={grupoOptions}
+                    placeholder="Seleccione grupo"
+                    searchPlaceholder="Buscar grupo..."
+                    emptyMessage="No hay grupos activos."
+                  />
                 </Field>
               </div>
               <DialogFooter>
@@ -720,7 +1000,7 @@ export function ParticipantsScreen() {
             ) : (
               filteredList.map((p) => (
                 <TableRow key={p.id} className="hover:bg-muted/10 transition">
-                  <TableCell className="font-mono text-xs pl-6 py-3">{p.id}</TableCell>
+                  <TableCell className="font-mono text-xs pl-6 py-3">{p.code}</TableCell>
                   <TableCell className="font-medium text-foreground py-3">{p.name}</TableCell>
                   <TableCell className="py-3">{p.age} años</TableCell>
                   <TableCell className="py-3">{p.sex === "F" ? "Femenino" : p.sex === "M" ? "Masculino" : "Otro"}</TableCell>
@@ -754,101 +1034,47 @@ export function ParticipantsScreen() {
   );
 }
 
-/* ------------------------- Instruments Config ------------------------- */
-export function InstrumentsScreen() {
-  const versions = [
-    { v: "v2.1", status: "publicada", date: "2026-05-10" },
-    { v: "v2.0", status: "histórica", date: "2025-11-20" },
-    { v: "v2.2", status: "borrador", date: "2026-06-01" },
-  ];
-  return (
-    <div className="space-y-4">
-      <Alert>
-        <Lock className="h-4 w-4" />
-        <AlertTitle>Versiones publicadas bloqueadas</AlertTitle>
-        <AlertDescription>Las versiones publicadas no pueden modificarse. Para realizar cambios, cree una nueva versión.</AlertDescription>
-      </Alert>
-
-      <div className="grid lg:grid-cols-4 gap-4">
-        <Card className="border-0 shadow-sm">
-          <CardHeader><CardTitle>BFA</CardTitle><CardDescription>Batería de Funciones Atencionales</CardDescription></CardHeader>
-          <CardContent className="space-y-2">
-            {versions.map((v) => (
-              <button key={v.v} className="w-full flex items-center justify-between p-2 rounded border hover:bg-muted text-left">
-                <div>
-                  <div className="font-medium text-sm">{v.v}</div>
-                  <div className="text-xs text-muted-foreground">{v.date}</div>
-                </div>
-                {v.status === "publicada" ? <Badge><Lock className="h-3 w-3 mr-1" /> publicada</Badge>
-                  : v.status === "borrador" ? <Badge variant="secondary"><Unlock className="h-3 w-3 mr-1" /> borrador</Badge>
-                  : <Badge variant="outline">histórica</Badge>}
-              </button>
-            ))}
-            <Button variant="outline" className="w-full mt-2" size="sm"><Plus className="h-4 w-4 mr-1" /> Nueva versión</Button>
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-3 border-0 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div><CardTitle>v2.2 · Borrador</CardTitle><CardDescription>Edición de subtests, ítems y claves</CardDescription></div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm"><Eye className="h-4 w-4 mr-1" /> Vista previa</Button>
-              <Button size="sm"><CheckCircle2 className="h-4 w-4 mr-1" /> Publicar versión</Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="figuras">
-              <TabsList>
-                <TabsTrigger value="figuras">Figuras idénticas</TabsTrigger>
-                <TabsTrigger value="desplazamiento">Desplazamiento</TabsTrigger>
-                <TabsTrigger value="espacial">Espacial</TabsTrigger>
-              </TabsList>
-              <TabsContent value="figuras" className="space-y-3 mt-4">
-                <div className="grid md:grid-cols-3 gap-3">
-                  <Field label="Tiempo límite (min)"><Input type="number" defaultValue="8" /></Field>
-                  <Field label="Total ítems"><Input type="number" defaultValue="30" /></Field>
-                  <Field label="Puntaje por ítem"><Input type="number" defaultValue="1" /></Field>
-                </div>
-                <Separator />
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>#</TableHead><TableHead>Enunciado</TableHead><TableHead>Tipo</TableHead><TableHead>Opciones</TableHead><TableHead>Clave</TableHead><TableHead>Puntaje</TableHead><TableHead className="w-10" />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {[1, 2, 3, 4, 5].map((i) => (
-                      <TableRow key={i}>
-                        <TableCell>{i}</TableCell>
-                        <TableCell className="max-w-xs truncate">Seleccione la figura idéntica al modelo</TableCell>
-                        <TableCell><Badge variant="secondary">imagen</Badge></TableCell>
-                        <TableCell>A · B · C · D</TableCell>
-                        <TableCell><Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100"><KeyRound className="h-3 w-3 mr-1" /> confidencial</Badge></TableCell>
-                        <TableCell>1</TableCell>
-                        <TableCell><Button variant="ghost" size="icon"><Pencil className="h-4 w-4" /></Button></TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                <Button variant="outline" size="sm"><Plus className="h-4 w-4 mr-1" /> Agregar ítem</Button>
-              </TabsContent>
-              <TabsContent value="desplazamiento" className="text-sm text-muted-foreground mt-4">Estructura equivalente para subtest Desplazamiento.</TabsContent>
-              <TabsContent value="espacial" className="text-sm text-muted-foreground mt-4">Estructura equivalente para subtest Espacial.</TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
-}
-
 /* ------------------------- Image Upload ------------------------- */
 export function ImageUploadScreen() {
-  const items = [
-    { id: 1, name: "fig-modelo-001.png", sub: "Figuras idénticas", size: "82 KB" },
-    { id: 2, name: "fig-opcion-001a.png", sub: "Figuras idénticas", size: "44 KB" },
-    { id: 3, name: "espacial-rot-003.png", sub: "Espacial", size: "98 KB" },
-  ];
+  const [subtestId, setSubtestId] = useState("figuras");
+  const [itemId, setItemId] = useState("1");
+  const [optionId, setOptionId] = useState("1");
+  const [role, setRole] = useState("modelo");
+  const [altText, setAltText] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setFile(e.target.files[0]);
+      setMessage("");
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!file) {
+      setMessage("Error: Por favor, seleccione un archivo primero.");
+      return;
+    }
+    setUploading(true);
+    setMessage("");
+    try {
+      if (role === "modelo") {
+        await instrumentService.uploadImage(file, itemId, undefined, altText, "ENUNCIADO");
+      } else {
+        await instrumentService.uploadOptionImage(file, optionId, undefined, altText);
+      }
+      setMessage("¡Imagen cargada exitosamente!");
+      setFile(null);
+    } catch (error: any) {
+      console.error(error);
+      setMessage("Error al cargar la imagen: " + (error.response?.data?.message || error.message));
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <div className="grid lg:grid-cols-3 gap-4">
       <Card className="lg:col-span-2 border-0 shadow-sm">
@@ -856,32 +1082,55 @@ export function ImageUploadScreen() {
         <CardContent>
           <label className="block rounded-lg border-2 border-dashed p-10 text-center cursor-pointer hover:bg-muted/50">
             <Upload className="h-8 w-8 mx-auto text-primary" />
-            <div className="mt-2 font-medium">Arrastra o haz clic para subir</div>
-            <div className="text-xs text-muted-foreground">PNG, JPG hasta 2MB. Resolución mínima 600×600.</div>
+            <div className="mt-2 font-medium">
+              {file ? `Seleccionado: ${file.name}` : "Arrastra o haz clic para subir"}
+            </div>
+            <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
+            <div className="text-xs text-muted-foreground mt-1">PNG, JPG hasta 2MB.</div>
           </label>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-4">
-            {items.map((it) => (
-              <div key={it.id} className="rounded border p-2">
-                <div className="aspect-square rounded bg-muted flex items-center justify-center"><ImageIcon className="h-8 w-8 text-muted-foreground" /></div>
-                <div className="text-xs mt-2 truncate font-mono">{it.name}</div>
-                <div className="flex items-center justify-between mt-1">
-                  <Badge variant="secondary" className="text-[10px]">{it.sub}</Badge>
-                  <span className="text-[10px] text-muted-foreground">{it.size}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+
+          {message && (
+            <div className={`mt-4 p-2.5 text-sm rounded ${message.startsWith("Error") ? "bg-rose-50 text-rose-800" : "bg-emerald-50 text-emerald-800"}`}>
+              {message}
+            </div>
+          )}
         </CardContent>
       </Card>
       <Card className="border-0 shadow-sm">
         <CardHeader><CardTitle>Metadatos</CardTitle></CardHeader>
         <CardContent className="space-y-3">
-          <Field label="Subtest"><Select defaultValue="fig"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="fig">Figuras idénticas</SelectItem><SelectItem value="des">Desplazamiento</SelectItem><SelectItem value="esp">Espacial</SelectItem></SelectContent></Select></Field>
-          <Field label="Ítem #"><Input type="number" placeholder="001" /></Field>
-          <Field label="Rol en ítem"><Select defaultValue="modelo"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="modelo">Modelo</SelectItem><SelectItem value="opc">Opción</SelectItem></SelectContent></Select></Field>
-          <Field label="Texto alternativo (interno)"><Textarea rows={2} placeholder="No visible al participante" /></Field>
-          <div className="flex items-center gap-2"><Switch defaultChecked id="lock" /><Label htmlFor="lock" className="text-sm">Bloquear descarga visible</Label></div>
-          <Button className="w-full">Guardar metadatos</Button>
+          <Field label="Subtest">
+            <Select value={subtestId} onValueChange={setSubtestId}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="figuras">Figuras idénticas</SelectItem>
+                <SelectItem value="desplazamiento">Desplazamiento</SelectItem>
+                <SelectItem value="espacial">Espacial</SelectItem>
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field label={role === "modelo" ? "Ítem #" : "Opción #"}>
+            {role === "modelo" ? (
+              <Input type="number" value={itemId} onChange={(e) => setItemId(e.target.value)} placeholder="1" />
+            ) : (
+              <Input type="number" value={optionId} onChange={(e) => setOptionId(e.target.value)} placeholder="1" />
+            )}
+          </Field>
+          <Field label="Rol en ítem">
+            <Select value={role} onValueChange={setRole}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="modelo">Modelo</SelectItem>
+                <SelectItem value="opc">Opción</SelectItem>
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field label="Texto alternativo (interno)">
+            <Textarea rows={2} value={altText} onChange={(e) => setAltText(e.target.value)} placeholder="No visible al participante" />
+          </Field>
+          <Button className="w-full" onClick={handleUpload} disabled={uploading}>
+            {uploading ? "Subiendo..." : "Subir Imagen y Guardar"}
+          </Button>
         </CardContent>
       </Card>
     </div>
@@ -890,30 +1139,57 @@ export function ImageUploadScreen() {
 
 /* ------------------------- Review Tray ------------------------- */
 export function ReviewTrayScreen() {
-  const items = [
-    { id: "R-0011", p: "Ana M. Pérez", sub: "Espacial", item: "12", ans: "Cuadrado rotado 90° hacia la izquierda", state: "pendiente" },
-    { id: "R-0012", p: "Luis García", sub: "Desplazamiento", item: "8", ans: "La figura se mueve dos casillas", state: "pendiente" },
-    { id: "R-0013", p: "Sofía Núñez", sub: "Figuras idénticas", item: "21", ans: "No estoy seguro", state: "marcado" },
-  ];
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadPending = () => {
+    setLoading(true);
+    resultsService.getPendingReviews().then((data) => {
+      setItems(data);
+      setLoading(false);
+    });
+  };
+
+  useEffect(() => {
+    loadPending();
+  }, []);
+
+  const handleGrade = async (reviewId: string, status: "CORRECTA" | "INCORRECTA") => {
+    try {
+      await resultsService.submitReview(reviewId, status);
+      // Remove item from state list
+      setItems(prev => prev.filter(item => item.id !== reviewId));
+    } catch (error) {
+      console.error(error);
+      alert("Error al enviar calificación.");
+    }
+  };
+
+  if (loading) return <div className="text-center p-8">Cargando bandeja de revisión...</div>;
+
   return (
     <Card className="border-0 shadow-sm">
       <CardHeader><CardTitle>Bandeja de revisión manual</CardTitle><CardDescription>Respuestas abiertas que requieren calificación humana.</CardDescription></CardHeader>
       <CardContent className="space-y-3">
-        {items.map((r) => (
-          <div key={r.id} className="rounded border p-4 grid md:grid-cols-[1fr_auto] gap-3">
-            <div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground"><Hash className="h-3 w-3" />{r.id} · {r.p} · {r.sub} · ítem {r.item}</div>
-              <div className="mt-2 text-sm bg-muted/50 rounded p-3 italic">"{r.ans}"</div>
-            </div>
-            <div className="flex md:flex-col gap-2 items-start md:items-end">
-              <Badge variant={r.state === "pendiente" ? "secondary" : "outline"}>{r.state}</Badge>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline"><XCircle className="h-4 w-4 mr-1" /> Incorrecta</Button>
-                <Button size="sm"><CheckCircle2 className="h-4 w-4 mr-1" /> Correcta</Button>
+        {items.length === 0 ? (
+          <div className="text-center text-sm text-muted-foreground p-6">No hay respuestas pendientes de revisión.</div>
+        ) : (
+          items.map((r) => (
+            <div key={r.id} className="rounded border p-4 grid md:grid-cols-[1fr_auto] gap-3">
+              <div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground"><Hash className="h-3 w-3" />{r.id} · {r.p} · {r.sub} · ítem {r.item}</div>
+                <div className="mt-2 text-sm bg-muted/50 rounded p-3 italic">"{r.ans}"</div>
+              </div>
+              <div className="flex md:flex-col gap-2 items-start md:items-end">
+                <Badge variant={r.state === "pendiente" ? "secondary" : "outline"}>{r.state}</Badge>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => handleGrade(r.id, "INCORRECTA")}><XCircle className="h-4 w-4 mr-1" /> Incorrecta</Button>
+                  <Button size="sm" onClick={() => handleGrade(r.id, "CORRECTA")}><CheckCircle2 className="h-4 w-4 mr-1" /> Correcta</Button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </CardContent>
     </Card>
   );
@@ -921,106 +1197,160 @@ export function ReviewTrayScreen() {
 
 /* ------------------------- Individual Results ------------------------- */
 export function ResultsScreen() {
-  const subs = [
-    { name: "Figuras idénticas", total: 30, ok: 24, ko: 6 },
-    { name: "Desplazamiento", total: 24, ok: 18, ko: 6 },
-    { name: "Espacial", total: 20, ok: 15, ko: 5 },
-  ];
-  const totalOk = subs.reduce((a, s) => a + s.ok, 0);
-  const totalKo = subs.reduce((a, s) => a + s.ko, 0);
-  const total = totalOk + totalKo;
+  const [results, setResults] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    resultsService.getResults().then((data) => {
+      setResults(data);
+      setLoading(false);
+    });
+  }, []);
+
+  if (loading) return <div className="text-center p-8">Cargando resultados...</div>;
+
   return (
-    <div className="space-y-4">
-      <Card className="border-0 shadow-sm">
-        <CardContent className="p-6 grid md:grid-cols-[1fr_auto] gap-4 items-center">
-          <div className="flex items-center gap-4">
-            <Avatar className="h-14 w-14"><AvatarFallback className="bg-accent text-primary">AP</AvatarFallback></Avatar>
-            <div>
-              <div className="text-xl font-semibold text-primary">Ana M. Pérez</div>
-              <div className="text-sm text-muted-foreground">P-0184 · Psicología 3A · 21 años · F</div>
-              <div className="text-xs text-muted-foreground mt-1">Sesión SES-2026-06-A · Finalizada el 2026-06-03 14:42</div>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline"><FileText className="h-4 w-4 mr-1" /> Exportar PDF</Button>
-            <Button><Send className="h-4 w-4 mr-1" /> Enviar al participante</Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="grid md:grid-cols-3 gap-4">
-        <Card className="border-0 shadow-sm">
-          <CardHeader><CardTitle>Puntaje directo total</CardTitle></CardHeader>
-          <CardContent>
-            <div className="text-5xl font-semibold text-primary">{totalOk}<span className="text-muted-foreground text-xl">/{total}</span></div>
-            <Progress className="mt-3" value={(totalOk / total) * 100} />
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-sm">
-          <CardHeader><CardTitle>Correctas vs Incorrectas</CardTitle></CardHeader>
-          <CardContent className="h-40">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={[{ n: "Correctas", v: totalOk }, { n: "Incorrectas", v: totalKo }]} dataKey="v" nameKey="n" innerRadius={30} outerRadius={55}>
-                  <Cell fill="#0f2649" /><Cell fill="#b91c1c" />
-                </Pie>
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-sm">
-          <CardHeader><CardTitle>Tiempo total</CardTitle></CardHeader>
-          <CardContent>
-            <div className="text-5xl font-semibold text-primary">18:24</div>
-            <div className="text-sm text-muted-foreground mt-1">3 subtests aplicados</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card className="border-0 shadow-sm">
-        <CardHeader><CardTitle>Detalle por subtest</CardTitle></CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader><TableRow><TableHead>Subtest</TableHead><TableHead>Correctas</TableHead><TableHead>Incorrectas</TableHead><TableHead>Total</TableHead><TableHead>%</TableHead><TableHead>Distribución</TableHead></TableRow></TableHeader>
-            <TableBody>
-              {subs.map((s) => (
-                <TableRow key={s.name}>
-                  <TableCell className="font-medium">{s.name}</TableCell>
-                  <TableCell><Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">{s.ok}</Badge></TableCell>
-                  <TableCell><Badge className="bg-rose-100 text-rose-800 hover:bg-rose-100">{s.ko}</Badge></TableCell>
-                  <TableCell>{s.total}</TableCell>
-                  <TableCell>{Math.round((s.ok / s.total) * 100)}%</TableCell>
-                  <TableCell><div className="w-40"><Progress value={(s.ok / s.total) * 100} /></div></TableCell>
+    <Card className="border-0 shadow-sm">
+      <CardHeader>
+        <CardTitle>Resultados de Evaluaciones</CardTitle>
+        <CardDescription>Búsqueda y consulta de puntajes individuales.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>ID Resultado</TableHead>
+              <TableHead>Participante</TableHead>
+              <TableHead>Sesión</TableHead>
+              <TableHead>Puntaje Total</TableHead>
+              <TableHead>Estado</TableHead>
+              <TableHead className="text-right">Acciones</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {results.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-6 text-sm text-muted-foreground">
+                  No hay resultados de evaluaciones registrados.
+                </TableCell>
+              </TableRow>
+            ) : (
+              results.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell className="font-mono text-xs">{r.id}</TableCell>
+                  <TableCell className="font-medium">{r.participantName}</TableCell>
+                  <TableCell>{r.sessionName}</TableCell>
+                  <TableCell className="font-bold">{r.totalScore} pts</TableCell>
+                  <TableCell>
+                    <Badge className={r.status === "CALCULADO" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}>
+                      {r.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="outline" size="sm" asChild>
+                      <Link to={`/app/resultados/individual/${r.id}`}>
+                        Ver Reporte
+                      </Link>
+                    </Button>
+                  </TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    </div>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
   );
 }
 
 /* ------------------------- Results Dashboard ------------------------- */
 export function ResultsDashboardScreen() {
-  const bySub = [
-    { sub: "Figuras", media: 24.3 }, { sub: "Desplazamiento", media: 17.5 }, { sub: "Espacial", media: 14.1 },
-  ];
-  const byAge = Array.from({ length: 8 }, (_, i) => ({ age: 18 + i, m: 50 + Math.round(Math.random() * 30) }));
-  const bySex = [{ n: "F", v: 312 }, { n: "M", v: 248 }, { n: "Otro", v: 14 }];
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  const [session, setSession] = useState("a");
+  const [grupo, setGrupo] = useState("a");
+  const [carrera, setCarrera] = useState("a");
+  const [edad, setEdad] = useState("");
+  const [sexo, setSexo] = useState("a");
+  const [subtest, setSubtest] = useState("a");
+
+  const loadData = (filters = {}) => {
+    setLoading(true);
+    resultsService.getDashboardData(filters).then((res) => {
+      setData(res);
+      setLoading(false);
+    });
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleApply = () => {
+    loadData({
+      sessionId: session !== "a" ? session : undefined,
+      grupoId: grupo !== "a" ? grupo : undefined,
+      carreraId: carrera !== "a" ? carrera : undefined,
+      edad: edad || undefined,
+      sexo: sexo !== "a" ? sexo : undefined,
+      subtestId: subtest !== "a" ? subtest : undefined
+    });
+  };
+
+  if (loading) return <div className="text-center p-8">Cargando métricas agregadas...</div>;
 
   return (
     <div className="space-y-4">
       <Card className="border-0 shadow-sm">
         <CardContent className="p-4 flex flex-wrap gap-3 items-end">
-          <Field label="Sesión"><Select defaultValue="a"><SelectTrigger className="w-48"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="a">Todas</SelectItem><SelectItem value="b">SES-2026-06-A</SelectItem></SelectContent></Select></Field>
-          <Field label="Grupo"><Select defaultValue="a"><SelectTrigger className="w-32"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="a">Todos</SelectItem></SelectContent></Select></Field>
-          <Field label="Carrera"><Select defaultValue="a"><SelectTrigger className="w-40"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="a">Todas</SelectItem></SelectContent></Select></Field>
-          <Field label="Edad"><Input className="w-28" placeholder="18–25" /></Field>
-          <Field label="Sexo"><Select defaultValue="a"><SelectTrigger className="w-28"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="a">Todos</SelectItem></SelectContent></Select></Field>
-          <Field label="Subtest"><Select defaultValue="a"><SelectTrigger className="w-40"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="a">Todos</SelectItem></SelectContent></Select></Field>
-          <div className="ml-auto flex gap-2"><Button variant="outline"><Filter className="h-4 w-4 mr-1" /> Aplicar</Button></div>
+          <Field label="Sesión">
+            <Select value={session} onValueChange={setSession}>
+              <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="a">Todas</SelectItem>
+                <SelectItem value="SES-2026-06-A">SES-2026-06-A</SelectItem>
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field label="Grupo">
+            <Select value={grupo} onValueChange={setGrupo}>
+              <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="a">Todos</SelectItem>
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field label="Carrera">
+            <Select value={carrera} onValueChange={setCarrera}>
+              <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="a">Todas</SelectItem>
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field label="Edad">
+            <Input className="w-28" placeholder="18–25" value={edad} onChange={(e) => setEdad(e.target.value)} />
+          </Field>
+          <Field label="Sexo">
+            <Select value={sexo} onValueChange={setSexo}>
+              <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="a">Todos</SelectItem>
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field label="Subtest">
+            <Select value={subtest} onValueChange={setSubtest}>
+              <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="a">Todos</SelectItem>
+              </SelectContent>
+            </Select>
+          </Field>
+          <div className="ml-auto flex gap-2">
+            <Button variant="outline" onClick={handleApply}><Filter className="h-4 w-4 mr-1" /> Aplicar</Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -1028,19 +1358,19 @@ export function ResultsDashboardScreen() {
         <Card className="border-0 shadow-sm">
           <CardHeader><CardTitle>Media por subtest</CardTitle></CardHeader>
           <CardContent className="h-64">
-            <ResponsiveContainer><BarChart data={bySub}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="sub" /><YAxis /><Tooltip /><Bar dataKey="media" fill="#0f2649" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer>
+            <ResponsiveContainer><BarChart data={data?.bySubtest}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="sub" /><YAxis /><Tooltip /><Bar dataKey="media" fill="#0f2649" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer>
           </CardContent>
         </Card>
         <Card className="border-0 shadow-sm">
           <CardHeader><CardTitle>Tendencia por edad</CardTitle></CardHeader>
           <CardContent className="h-64">
-            <ResponsiveContainer><LineChart data={byAge}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="age" /><YAxis /><Tooltip /><Line type="monotone" dataKey="m" stroke="#b91c1c" strokeWidth={2} /></LineChart></ResponsiveContainer>
+            <ResponsiveContainer><LineChart data={data?.byAge}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="age" /><YAxis /><Tooltip /><Line type="monotone" dataKey="m" stroke="#b91c1c" strokeWidth={2} /></LineChart></ResponsiveContainer>
           </CardContent>
         </Card>
         <Card className="border-0 shadow-sm">
           <CardHeader><CardTitle>Distribución por sexo</CardTitle></CardHeader>
           <CardContent className="h-64">
-            <ResponsiveContainer><PieChart><Pie data={bySex} dataKey="v" nameKey="n" outerRadius={80}>{bySex.map((_, i) => <Cell key={i} fill={COLORS[i]} />)}</Pie><Legend /></PieChart></ResponsiveContainer>
+            <ResponsiveContainer><PieChart><Pie data={data?.bySex} dataKey="v" nameKey="n" outerRadius={80}>{data?.bySex.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}</Pie><Legend /></PieChart></ResponsiveContainer>
           </CardContent>
         </Card>
       </div>
@@ -1051,11 +1381,21 @@ export function ResultsDashboardScreen() {
 /* ------------------------- Reports Center ------------------------- */
 export function ReportsScreen() {
   const reports = [
-    { name: "Resultados individuales", desc: "Detalle por participante con puntajes y subtests.", icon: FileText },
-    { name: "Resultados agregados", desc: "Resumen estadístico filtrable por grupo y carrera.", icon: FileBarChart },
-    { name: "Auditoría de sesiones", desc: "Eventos por sesión: inicio, fin, interrupciones.", icon: ShieldCheck },
-    { name: "Inventario de instrumentos", desc: "Versiones publicadas y subtests activos.", icon: ClipboardList },
+    { type: "INDIVIDUAL", name: "Resultados individuales", desc: "Detalle por participante con puntajes y subtests.", icon: FileText },
+    { type: "AGREGADO", name: "Resultados agregados", desc: "Resumen estadístico filtrable por grupo y carrera.", icon: FileBarChart },
+    { type: "AUDITORIA", name: "Auditoría de sesiones", desc: "Eventos por sesión: inicio, fin, interrupciones.", icon: ShieldCheck },
+    { type: "INSTRUMENTOS", name: "Inventario de instrumentos", desc: "Versiones publicadas y subtests activos.", icon: ClipboardList },
   ];
+
+  const handleDownload = async (type: string, format: "PDF" | "XLSX" | "CSV") => {
+    try {
+      await resultsService.downloadReport(type, format);
+    } catch (error) {
+      console.error("Error al descargar reporte", error);
+      alert("Error al descargar reporte. Asegúrese de que el backend esté disponible.");
+    }
+  };
+
   return (
     <div className="grid md:grid-cols-2 gap-4">
       {reports.map((r) => (
@@ -1066,9 +1406,9 @@ export function ReportsScreen() {
               <div className="font-medium">{r.name}</div>
               <div className="text-sm text-muted-foreground">{r.desc}</div>
               <div className="mt-3 flex gap-2">
-                <Button size="sm" variant="outline"><FileText className="h-4 w-4 mr-1" /> PDF</Button>
-                <Button size="sm" variant="outline"><FileSpreadsheet className="h-4 w-4 mr-1" /> Excel</Button>
-                <Button size="sm" variant="outline"><Download className="h-4 w-4 mr-1" /> CSV</Button>
+                <Button size="sm" variant="outline" onClick={() => handleDownload(r.type, "PDF")}><FileText className="h-4 w-4 mr-1" /> PDF</Button>
+                <Button size="sm" variant="outline" onClick={() => handleDownload(r.type, "XLSX")}><FileSpreadsheet className="h-4 w-4 mr-1" /> Excel</Button>
+                <Button size="sm" variant="outline" onClick={() => handleDownload(r.type, "CSV")}><Download className="h-4 w-4 mr-1" /> CSV</Button>
               </div>
             </div>
           </CardContent>
@@ -1080,12 +1420,18 @@ export function ReportsScreen() {
 
 /* ------------------------- Audit ------------------------- */
 export function AuditScreen() {
-  const events = [
-    { d: "2026-06-03 14:42", u: "lic.martinez", a: "Finalizó intento", e: "intento_test:9821", ip: "190.124.10.4" },
-    { d: "2026-06-03 14:21", u: "dra.hernandez", a: "Generó tokens", e: "sesion:SES-2026-06-A", ip: "190.124.10.4" },
-    { d: "2026-06-03 13:55", u: "admin", a: "Publicó versión", e: "test:BFA v2.1", ip: "192.168.1.20" },
-    { d: "2026-06-03 13:10", u: "consultor1", a: "Exportó reporte", e: "reporte:agregado", ip: "190.124.10.9" },
-  ];
+  const [events, setEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    adminService.getAuditLogs().then((data) => {
+      setEvents(data);
+      setLoading(false);
+    });
+  }, []);
+
+  if (loading) return <div className="text-center p-8">Cargando bitácora de auditoría...</div>;
+
   return (
     <Card className="border-0 shadow-sm">
       <CardHeader className="flex flex-row items-center justify-between gap-2">
@@ -1102,15 +1448,23 @@ export function AuditScreen() {
         <Table>
           <TableHeader><TableRow><TableHead>Fecha</TableHead><TableHead>Usuario</TableHead><TableHead>Acción</TableHead><TableHead>Entidad</TableHead><TableHead>IP</TableHead></TableRow></TableHeader>
           <TableBody>
-            {events.map((e, i) => (
-              <TableRow key={i}>
-                <TableCell className="font-mono text-xs">{e.d}</TableCell>
-                <TableCell>{e.u}</TableCell>
-                <TableCell><Badge variant="secondary">{e.a}</Badge></TableCell>
-                <TableCell className="font-mono text-xs">{e.e}</TableCell>
-                <TableCell className="font-mono text-xs">{e.ip}</TableCell>
+            {events.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-6 text-sm text-muted-foreground">
+                  No hay registros de auditoría disponibles.
+                </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              events.map((e, i) => (
+                <TableRow key={i}>
+                  <TableCell className="font-mono text-xs">{e.d}</TableCell>
+                  <TableCell>{e.u}</TableCell>
+                  <TableCell><Badge variant="secondary">{e.a}</Badge></TableCell>
+                  <TableCell className="font-mono text-xs">{e.e}</TableCell>
+                  <TableCell className="font-mono text-xs">{e.ip}</TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </CardContent>
@@ -1120,44 +1474,92 @@ export function AuditScreen() {
 
 /* ------------------------- Users & Roles ------------------------- */
 export function UsersScreen() {
-  const users = [
-    { n: "Dra. L. Hernández", e: "lhernandez@uam.edu.ni", r: "Psicólogo", s: true },
-    { n: "Lic. J. Martínez", e: "jmartinez@uam.edu.ni", r: "Aplicador", s: true },
-    { n: "Carlos Ruiz", e: "cruiz@uam.edu.ni", r: "Consultor", s: false },
-    { n: "Admin UAM", e: "admin@uam.edu.ni", r: "Administrador", s: true },
-  ];
-  const perms = [
-    { k: "Aplicar tests", roles: ["Aplicador", "Psicólogo", "Administrador"] },
-    { k: "Configurar instrumentos", roles: ["Psicólogo", "Administrador"] },
-    { k: "Ver resultados", roles: ["Psicólogo", "Consultor", "Administrador"] },
-    { k: "Gestionar usuarios", roles: ["Administrador"] },
-    { k: "Acceder a auditoría", roles: ["Administrador"] },
-  ];
+  const [users, setUsers] = useState<any[]>([]);
+  const [perms, setPerms] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const [isOpen, setIsOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("Aplicador");
+  const [saving, setSaving] = useState(false);
+
+  const loadData = () => {
+    setLoading(true);
+    Promise.all([
+      adminService.getUsers(),
+      adminService.getPermissionsMatrix()
+    ]).then(([usersData, permsData]) => {
+      setUsers(usersData);
+      setPerms(permsData);
+      setLoading(false);
+    });
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleCreateUser = async () => {
+    if (!name || !email) {
+      alert("Por favor rellene todos los campos.");
+      return;
+    }
+    setSaving(true);
+    try {
+      await adminService.createUser({
+        n: name,
+        e: email,
+        r: role,
+        s: true
+      });
+      setIsOpen(false);
+      setName("");
+      setEmail("");
+      loadData();
+    } catch (e) {
+      console.error(e);
+      alert("Error al crear usuario.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <div className="text-center p-8">Cargando usuarios y matriz de permisos...</div>;
+
   return (
     <div className="grid lg:grid-cols-3 gap-4">
       <Card className="lg:col-span-2 border-0 shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between">
           <div><CardTitle>Usuarios</CardTitle><CardDescription>Personal interno con acceso al sistema.</CardDescription></div>
-          <Button><Plus className="h-4 w-4 mr-1" /> Nuevo usuario</Button>
+          <Button onClick={() => setIsOpen(true)}><Plus className="h-4 w-4 mr-1" /> Nuevo usuario</Button>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader><TableRow><TableHead>Nombre</TableHead><TableHead>Correo</TableHead><TableHead>Rol</TableHead><TableHead>Estado</TableHead><TableHead className="w-10" /></TableRow></TableHeader>
             <TableBody>
-              {users.map((u) => (
-                <TableRow key={u.e}>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-7 w-7"><AvatarFallback className="bg-accent text-primary text-xs">{u.n.split(" ").map((x) => x[0]).slice(0, 2).join("")}</AvatarFallback></Avatar>
-                      <span className="text-sm font-medium">{u.n}</span>
-                    </div>
+              {users.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-6 text-sm text-muted-foreground">
+                    No hay usuarios registrados.
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{u.e}</TableCell>
-                  <TableCell><Badge variant="secondary">{u.r}</Badge></TableCell>
-                  <TableCell>{u.s ? <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">activo</Badge> : <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100">inactivo</Badge>}</TableCell>
-                  <TableCell><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                users.map((u) => (
+                  <TableRow key={u.e}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-7 w-7"><AvatarFallback className="bg-accent text-primary text-xs">{u.n?.split(" ").map((x: string) => x[0]).slice(0, 2).join("") || "U"}</AvatarFallback></Avatar>
+                        <span className="text-sm font-medium">{u.n}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{u.e}</TableCell>
+                    <TableCell><Badge variant="secondary">{u.r}</Badge></TableCell>
+                    <TableCell>{u.s ? <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">activo</Badge> : <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100">inactivo</Badge>}</TableCell>
+                    <TableCell><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
@@ -1168,11 +1570,45 @@ export function UsersScreen() {
           {perms.map((p) => (
             <div key={p.k}>
               <div className="text-sm font-medium">{p.k}</div>
-              <div className="mt-1 flex flex-wrap gap-1">{p.roles.map((r) => <Badge key={r} variant="secondary" className="text-[10px]">{r}</Badge>)}</div>
+              <div className="mt-1 flex flex-wrap gap-1">{p.roles.map((r: string) => <Badge key={r} variant="secondary" className="text-[10px]">{r}</Badge>)}</div>
             </div>
           ))}
         </CardContent>
       </Card>
+
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nuevo Usuario</DialogTitle>
+            <DialogDescription>Registra un nuevo usuario en el sistema.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Field label="Nombre Completo">
+              <Input value={name} onChange={e => setName(e.target.value)} placeholder="Ej. Dr. Juan Pérez" />
+            </Field>
+            <Field label="Correo Electrónico">
+              <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="correo@uam.edu.ni" />
+            </Field>
+            <Field label="Rol Asignado">
+              <Select value={role} onValueChange={setRole}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Administrador">Administrador</SelectItem>
+                  <SelectItem value="Psicólogo">Psicólogo</SelectItem>
+                  <SelectItem value="Aplicador">Aplicador</SelectItem>
+                  <SelectItem value="Consultor">Consultor</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsOpen(false)}>Cancelar</Button>
+            <Button onClick={handleCreateUser} disabled={saving}>
+              {saving ? "Registrando..." : "Registrar Usuario"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

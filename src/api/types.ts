@@ -94,6 +94,11 @@ export interface ParticipantRequest {
   code: string;
   firstNames: string;
   lastNames: string;
+  fechaNacimiento?: string;
+  sexoId?: number;
+  carreraId?: number;
+  cohorteId?: number;
+  grupoAcademicoId?: number;
 }
 
 export interface Carrera {
@@ -143,6 +148,60 @@ export interface Participante {
 }
 
 // Instrument Editor DTOs
+export type EstadoVersionTest = "BORRADOR" | "APROBADO" | "PUBLICADA" | "HISTORICA";
+export type EstadoGeneral = "ACTIVO" | "INACTIVO";
+export type EstadoConfiguracion = "BORRADOR" | "APROBADO" | "PUBLICADO" | "INACTIVO";
+export type TipoItem =
+  | "SOLO_TEXTO"
+  | "SOLO_IMAGEN"
+  | "TEXTO_E_IMAGEN"
+  | "COMPARACION_IMAGENES"
+  | "RAZONAMIENTO_VERBAL";
+export type TipoRespuesta =
+  | "OPCION_UNICA"
+  | "OPCION_MULTIPLE"
+  | "TEXTO_ABIERTO"
+  | "NUMERICA"
+  | "VERDADERO_FALSO";
+export type TipoReglaCalificacion =
+  | "CLAVE_ITEM"
+  | "OPCION_DIMENSION"
+  | "LIKERT"
+  | "NUMERICA_RANGO"
+  | "REVISION_MANUAL"
+  | "RUBRICA"
+  | "FORMULA";
+
+export interface TestPsicologicoDTO {
+  id: number;
+  codigoTest: string;
+  nombreTest: string;
+  descripcion?: string;
+  estado?: EstadoGeneral;
+  creadoEn?: string;
+}
+
+export interface VersionTestDTO {
+  id: number;
+  testId?: number;
+  estrategiaCalificacionId?: number;
+  numeroVersion: string;
+  estado: EstadoVersionTest;
+  instruccionesGenerales?: string;
+  tiempoLimiteSegundos?: number;
+  permiteAleatorizarItems?: boolean;
+  permiteAleatorizarSubtests?: boolean;
+  creadoEn?: string;
+}
+
+export interface EstrategiaCalificacionDTO {
+  id: number;
+  codigo?: string;
+  nombre?: string;
+  tipoEstrategia?: string;
+  descripcion?: string;
+}
+
 export interface TestRequest {
   code: string;
   name: string;
@@ -171,6 +230,53 @@ export interface SubtestRequest {
   strategyId?: number;
 }
 
+export interface SubtestDTO {
+  id: number;
+  versionTestId?: number;
+  estrategiaCalificacionId?: number;
+  codigoSubtest: string;
+  nombreSubtest: string;
+  descripcion?: string;
+  instrucciones?: string;
+  numeroOrden: number;
+  tiempoLimiteSegundos?: number;
+  permiteAleatorizarItems?: boolean;
+  permiteAleatorizarOpciones?: boolean;
+  esObligatorio?: boolean;
+  estado?: EstadoGeneral;
+}
+
+export interface ItemRequest {
+  code: string;
+  itemType: TipoItem;
+  responseType: TipoRespuesta;
+  prompt?: string;
+  instruction?: string;
+  order: number;
+  baseScore?: number;
+  timeLimitSeconds?: number;
+  required?: boolean;
+  confidential?: boolean;
+}
+
+export interface ItemDTO {
+  id: number;
+  subtestId?: number;
+  codigoItem: string;
+  tipoItem: TipoItem;
+  tipoRespuesta: TipoRespuesta;
+  enunciado?: string;
+  instruccion?: string;
+  numeroOrden: number;
+  puntajeBase?: number;
+  tiempoLimiteSegundos?: number;
+  esObligatorio?: boolean;
+  esConfidencial?: boolean;
+  estado?: EstadoGeneral;
+  imagenes?: ImageResourceDTO[];
+  images?: ImageResourceDTO[];
+}
+
 export interface OptionRequest {
   code: string;
   text?: string;
@@ -178,9 +284,40 @@ export interface OptionRequest {
   ordinalValue?: number;
 }
 
+export interface OptionDTO {
+  id: number;
+  itemId?: number;
+  codigoOpcion: string;
+  textoOpcion?: string;
+  numeroOrden: number;
+  valorOrdinal?: number;
+  estado?: EstadoGeneral;
+  imagenes?: ImageResourceDTO[];
+  images?: ImageResourceDTO[];
+}
+
+export interface ImageResourceDTO {
+  id?: number;
+  imagenId?: number;
+  imageId?: number;
+  recursoMultimediaId?: number;
+  numeroOrden?: number;
+  order?: number;
+  orden?: number;
+  textoAlternativo?: string;
+  altText?: string;
+  textoAlt?: string;
+  descripcion?: string;
+  url?: string;
+  publicUrl?: string;
+  signedUrl?: string;
+  rutaPublica?: string;
+  rutaAlmacenamiento?: string;
+}
+
 export interface AnswerKeyRequest {
   ruleId: number;
-  correctOptionId: number;
+  correctOptionId?: number;
   expectedText?: string;
   expectedNumber?: number;
   numericTolerance?: number;
@@ -188,32 +325,81 @@ export interface AnswerKeyRequest {
   requiresManualReview?: boolean;
 }
 
+export interface AnswerKeyDTO {
+  id: number;
+  reglaCalificacionId?: number;
+  itemId?: number;
+  opcionCorrectaId?: number;
+  textoEsperado?: string;
+  valorNumericoEsperado?: number;
+  toleranciaNumerica?: number;
+  puntaje?: number;
+  requiereRevisionManual?: boolean;
+}
+
 export interface ScoringRuleRequest {
   strategyId: number;
-  ruleType: "CLAVE_ITEM" | "OPCION_DIMENSION" | "LIKERT" | "NUMERICA_RANGO" | "REVISION_MANUAL" | "RUBRICA" | "FORMULA";
+  ruleType: TipoReglaCalificacion;
   itemId?: number;
   priority?: number;
   parametersJson?: string;
   observation?: string;
 }
 
+export interface ScoringRuleDTO {
+  id: number;
+  versionTestId?: number;
+  subtestId?: number;
+  itemId?: number;
+  estrategiaCalificacionId?: number;
+  tipoRegla: TipoReglaCalificacion;
+  prioridad: number;
+  activa?: boolean;
+  estado?: EstadoConfiguracion;
+  parametros?: string;
+  observacion?: string;
+}
+
 export interface BaremoRequest {
   versionId: number;
-  dimensionId: number;
+  dimensionId?: number;
   code: string;
   name: string;
   description?: string;
   normativeGroup?: string;
 }
 
+export interface BaremoDTO {
+  id: number;
+  versionTestId?: number;
+  dimensionResultadoId?: number;
+  codigoBaremo: string;
+  nombre: string;
+  descripcion?: string;
+  grupoNormativo?: string;
+  estado?: EstadoConfiguracion;
+}
+
 export interface BaremoRangeRequest {
   minScore: number;
   maxScore: number;
-  percentile: number;
+  percentile?: number;
   category: string;
   interpretation?: string;
   recommendation?: string;
   order: number;
+}
+
+export interface BaremoRangeDTO {
+  id: number;
+  baremoId?: number;
+  puntajeMinimo: number;
+  puntajeMaximo: number;
+  percentil?: number;
+  categoria: string;
+  interpretacion?: string;
+  recomendacion?: string;
+  orden: number;
 }
 
 export interface ReportRequest {

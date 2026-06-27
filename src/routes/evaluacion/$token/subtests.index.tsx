@@ -18,8 +18,8 @@ function SubtestsRoute() {
 
   if (!accessData) return null;
 
-  const handleStartSubtest = (subtestId: string) => {
-    navigate({ to: `/evaluacion/${token}/subtests/${subtestId}/instrucciones` });
+  const handleStartSubtest = (subtestSlug: string) => {
+    navigate({ to: `/evaluacion/${token}/subtests/${subtestSlug}/instrucciones` });
   };
 
   const allCompleted = accessData.subtests.every(s => s.status === "COMPLETADO");
@@ -68,11 +68,11 @@ function SubtestsRoute() {
                     {isCompletado ? (
                       <Badge className="bg-emerald-100 text-emerald-800 border-none font-medium">Completado</Badge>
                     ) : isEnProgreso ? (
-                      <Button size="sm" onClick={() => handleStartSubtest(s.id)} className="bg-blue-600 hover:bg-blue-700">
+                      <Button size="sm" onClick={() => handleStartSubtest(s.slug)} className="bg-blue-600 hover:bg-blue-700">
                         <Play className="h-3.5 w-3.5 mr-1.5 fill-current" /> Continuar
                       </Button>
                     ) : (
-                      <Button size="sm" onClick={() => handleStartSubtest(s.id)}>
+                      <Button size="sm" onClick={() => handleStartSubtest(s.slug)}>
                         <Play className="h-3.5 w-3.5 mr-1.5 fill-current" /> Iniciar
                       </Button>
                     )}

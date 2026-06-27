@@ -1,9 +1,11 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
 import { ArrowLeft, ShieldCheck, Download, AlertTriangle } from "lucide-react";
 import { Button } from "../../app/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../app/components/ui/card";
 import { Badge } from "../../app/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../app/components/ui/table";
+import { resultsService, IndividualResultDTO } from "../../api/resultsService";
 
 export const Route = createFileRoute("/app/resultados/individual/$resultadoId")({
   component: ResultadoIndividualDetailRoute,
@@ -11,24 +13,18 @@ export const Route = createFileRoute("/app/resultados/individual/$resultadoId")(
 
 function ResultadoIndividualDetailRoute() {
   const { resultadoId } = useParams({ from: "/app/resultados/individual/$resultadoId" });
+  const [result, setResult] = useState<IndividualResultDTO | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const mockResult = {
-    resultId: resultadoId,
-    participant: {
-      id: "P-0184",
-      displayName: "Ana María Pérez",
-      demographicSummary: "Femenino, 21 años, Psicología 3A",
-    },
-    session: { id: "SES-2026-06-A", name: "Psicología I - Aplicación Digital" },
-    status: "CALCULADO",
-    totalScore: 74,
-    dimensions: [
-      { dimensionName: "Figuras idénticas (Atención selectiva)", rawScore: 28, percentile: 85, category: "Alto", interpretation: "Excelente capacidad para identificar detalles visuales específicos con rapidez." },
-      { dimensionName: "Desplazamiento (Atención dividida)", rawScore: 18, percentile: 72, category: "Medio-Alto", interpretation: "Buena capacidad de retención y análisis de transformaciones visuales." },
-      { dimensionName: "Espacial (Orientación espacial)", rawScore: 16, percentile: 68, category: "Medio", interpretation: "Habilidad promedio en razonamiento y rotación mental." }
-    ],
-    disclaimer: "ADVERTENCIA: Este reporte muestra resultados aprobados por el baremo BFA digital para fines de investigación académica y práctica supervisada. No constituye un diagnóstico clínico o psicológico definitivo por sí mismo."
-  };
+  useEffect(() => {
+    resultsService.getResultDetail(resultadoId).then((data) => {
+      setResult(data);
+      setLoading(false);
+    });
+  }, [resultadoId]);
+
+  if (loading) return <div className="text-center p-8">Cargando reporte individual...</div>;
+  if (!result) return <div className="text-center p-8">No se encontró el resultado.</div>;
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -38,7 +34,7 @@ function ResultadoIndividualDetailRoute() {
             <ArrowLeft className="h-4 w-4 mr-1" /> Volver a resultados
           </Link>
         </Button>
-        <Button size="sm" variant="outline">
+        <Button size="sm" variant="outline" onClick={() => resultsService.downloadReport("INDIVIDUAL", "PDF", { resultId: resultadoId })}>
           <Download className="h-4 w-4 mr-1" /> Exportar PDF Seguro
         </Button>
       </div>
@@ -51,7 +47,7 @@ function ResultadoIndividualDetailRoute() {
               <CardDescription>Resultado de evaluación del participante</CardDescription>
             </div>
             <Badge className="bg-emerald-100 text-emerald-800 border-none font-semibold">
-              <ShieldCheck className="h-3.5 w-3.5 mr-1" /> {mockResult.status}
+              <ShieldCheck className="h-3.5 w-3.5 mr-1" /> {result.status}
             </Badge>
           </div>
         </CardHeader>
@@ -59,13 +55,13 @@ function ResultadoIndividualDetailRoute() {
           <div className="grid sm:grid-cols-2 gap-4 bg-muted/20 p-4 rounded-md border text-sm">
             <div>
               <span className="text-xs text-muted-foreground block">Participante</span>
-              <span className="font-semibold text-foreground">{mockResult.participant.displayName} ({mockResult.participant.id})</span>
-              <span className="block text-xs text-muted-foreground mt-0.5">{mockResult.participant.demographicSummary}</span>
+              <span className="font-semibold text-foreground">{result.participant.displayName} ({result.participant.id})</span>
+              <span className="block text-xs text-muted-foreground mt-0.5">{result.participant.demographicSummary}</span>
             </div>
             <div>
               <span className="text-xs text-muted-foreground block">Sesión de Aplicación</span>
-              <span className="font-semibold text-foreground">{mockResult.session.name}</span>
-              <span className="block text-xs text-muted-foreground mt-0.5">ID: {mockResult.session.id}</span>
+              <span className="font-semibold text-foreground">{result.session.name}</span>
+              <span className="block text-xs text-muted-foreground mt-0.5">ID: {result.session.id}</span>
             </div>
           </div>
 
@@ -81,7 +77,7 @@ function ResultadoIndividualDetailRoute() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {mockResult.dimensions.map((d) => (
+                {result.dimensions.map((d) => (
                   <TableRow key={d.dimensionName}>
                     <TableCell>
                       <div>
@@ -105,7 +101,7 @@ function ResultadoIndividualDetailRoute() {
           <div className="flex items-start gap-2.5 p-3 rounded bg-amber-50 border border-amber-100 mt-6">
             <AlertTriangle className="h-4 w-4 text-amber-700 shrink-0 mt-0.5" />
             <p className="text-xs text-amber-900 leading-relaxed font-medium">
-              {mockResult.disclaimer}
+              {result.disclaimer}
             </p>
           </div>
         </CardContent>

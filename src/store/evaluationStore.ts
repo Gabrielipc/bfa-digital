@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { ParticipantEvaluationAccessDTO } from '../routes/evaluacion.$token';
+import { ParticipantEvaluationAccessDTO } from '../api/participantMappers';
 import { SaveAnswerRequest } from '../api/types';
 
 interface EvaluationState {

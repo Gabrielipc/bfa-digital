@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useParams, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Plus, Copy, Check, Trash2, ShieldAlert } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAdminStore } from "../../store/adminStore";
 import { Button } from "../../app/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../app/components/ui/card";

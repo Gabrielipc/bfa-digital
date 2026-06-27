@@ -4,7 +4,8 @@ import { useAuthStore, normalizeRole } from "../store/authStore";
 import { Brand } from "../app/components/brand";
 import {
   LayoutDashboard, Users, ClipboardList, Activity, FileBarChart,
-  Settings2, ImageUp, ShieldCheck, UserCog, ListChecks, LogOut, Bell, Search, Database
+  Settings2, ImageUp, ShieldCheck, UserCog, ListChecks, LogOut, Bell, Search, Database,
+  BookOpen, Layers, Calendar
 } from "lucide-react";
 import { Input } from "../app/components/ui/input";
 import { Avatar, AvatarFallback } from "../app/components/ui/avatar";
@@ -36,9 +37,17 @@ const NAV_GROUPS: { group: string; items: NavItem[] }[] = [
     ],
   },
   {
+    group: "Catálogos",
+    items: [
+      { to: "/app/carreras", label: "Carreras", icon: BookOpen, roles: ["aplicador", "psicologo", "admin"] },
+      { to: "/app/grupos", label: "Grupos Académicos", icon: Layers, roles: ["aplicador", "psicologo", "admin"] },
+      { to: "/app/cohortes", label: "Cohortes", icon: Calendar, roles: ["aplicador", "psicologo", "admin"] },
+      { to: "/app/sexos", label: "Sexos", icon: Users, roles: ["aplicador", "psicologo", "admin"] },
+    ],
+  },
+  {
     group: "Aplicación",
     items: [
-      { to: "/app/sesiones/nueva", label: "Nueva sesión", icon: ClipboardList, roles: ["aplicador", "psicologo", "admin"] },
       { to: "/app/sesiones", label: "Monitor de sesiones", icon: Activity, roles: ["aplicador", "psicologo", "admin"] },
       { to: "/app/participantes", label: "Participantes", icon: Users, roles: ["aplicador", "psicologo", "admin"] },
     ],
@@ -47,8 +56,6 @@ const NAV_GROUPS: { group: string; items: NavItem[] }[] = [
     group: "Instrumentos",
     items: [
       { to: "/app/instrumentos", label: "Configuración de pruebas", icon: Settings2, roles: ["psicologo", "admin"] },
-      { to: "/app/carga-imagenes", label: "Carga de imágenes", icon: ImageUp, roles: ["psicologo", "admin"] },
-      { to: "/app/revision-manual", label: "Revisión manual", icon: ListChecks, roles: ["psicologo", "admin"] },
     ],
   },
   {
@@ -64,8 +71,6 @@ const NAV_GROUPS: { group: string; items: NavItem[] }[] = [
     items: [
       { to: "/app/auditoria", label: "Auditoría", icon: ShieldCheck, roles: ["admin"] },
       { to: "/app/usuarios", label: "Usuarios", icon: UserCog, roles: ["admin"] },
-      { to: "/app/roles", label: "Roles y Permisos", icon: UserCog, roles: ["admin"] },
-      { to: "/app/respaldos", label: "Respaldos", icon: Database, roles: ["admin"] },
     ],
   },
 ];
@@ -90,6 +95,10 @@ function AppLayout() {
 
   // Título e información dinámica para la cabecera del módulo actual
   const getHeaderInfo = (path: string) => {
+    if (path.includes("/app/carreras")) return { t: "Catálogo de Carreras", s: "Gestión de carreras académicas disponibles" };
+    if (path.includes("/app/grupos")) return { t: "Catálogo de Grupos Académicos", s: "Gestión de grupos y asignaciones" };
+    if (path.includes("/app/cohortes")) return { t: "Catálogo de Cohortes", s: "Gestión de cohortes por año y período" };
+    if (path.includes("/app/sexos")) return { t: "Catálogo de Sexos", s: "Gestión de opciones biológicas y de género" };
     if (path.includes("/app/dashboard")) return { t: "Inicio", s: "Resumen general de su actividad" };
     if (path.includes("/app/sesiones/nueva")) return { t: "Nueva sesión", s: "Creación y configuración de sesión de pruebas" };
     if (path.includes("/app/sesiones")) return { t: "Monitor de sesiones", s: "Estado en tiempo real de los participantes" };

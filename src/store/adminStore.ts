@@ -1,13 +1,21 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { apiClient } from '../api/axios';
+import { catalogService } from '../api/catalogService';
+import { Carrera, CatalogoSexo, Cohorte, GrupoAcademico, ParticipantRequest } from '../api/types';
+import { mapParticipant } from './participantMapper';
 
 export interface Participant {
   id: string; // UUID string
+  code: string;
   name: string;
   age: number;
-  sex: 'F' | 'M' | 'O';
+  sex: string;
+  carreraId?: number;
   carrera: string;
+  cohorteId?: number;
+  cohorte: string;
+  grupoId?: number;
   grupo: string;
   registeredAt: string;
   latestAttemptStatus: string;
@@ -53,18 +61,34 @@ interface AdminState {
   assignments: Record<string, SessionAssignment[]>; // sessionId -> assignments
   incidences: Incidence[];
   generatedTokens: Record<string, string>; // assignmentId -> rawToken
-  publishedVersions: any[];
   versionSubtests: Record<string, any[]>;
   simulationActive: Record<string, boolean>;
   loading: boolean;
   error: string | null;
 
+  carreras: Carrera[];
+  gruposAcademicos: GrupoAcademico[];
+  cohortes: Cohorte[];
+  sexos: CatalogoSexo[];
+
+  fetchCarreras: () => Promise<void>;
+  createCarrera: (carrera: Omit<Carrera, "id">) => Promise<void>;
+  removeCarrera: (id: number) => Promise<void>;
+  fetchGrupos: () => Promise<void>;
+  createGrupo: (grupo: Omit<GrupoAcademico, "id">) => Promise<void>;
+  removeGrupo: (id: number) => Promise<void>;
+  fetchCohortes: () => Promise<void>;
+  createCohorte: (cohorte: Omit<Cohorte, "id">) => Promise<void>;
+  removeCohorte: (id: number) => Promise<void>;
+  fetchSexos: () => Promise<void>;
+  createSexo: (sexo: Omit<CatalogoSexo, "id">) => Promise<void>;
+  removeSexo: (id: number) => Promise<void>;
+
   fetchParticipants: () => Promise<void>;
   fetchSessions: () => Promise<void>;
   fetchAssignments: (sessionId: string) => Promise<void>;
-  fetchPublishedVersions: () => Promise<void>;
   fetchVersionSubtests: (versionId: string) => Promise<void>;
-  addParticipant: (participant: { code: string; firstNames: string; lastNames: string }) => Promise<void>;
+  addParticipant: (participant: ParticipantRequest) => Promise<void>;
   createSession: (
     sessionData: {
       versionTestId: number;
@@ -78,7 +102,7 @@ interface AdminState {
     subtestConfigs: {
       subtestId: number;
       order: number;
-      timeLimitSeconds: number;
+      timeLimitSeconds?: number;
       randomizeItems: boolean;
       randomizeOptions: boolean;
     }[],
@@ -100,28 +124,167 @@ export const useAdminStore = create<AdminState>()(
       assignments: {},
       incidences: [],
       generatedTokens: {},
-      publishedVersions: [],
       versionSubtests: {},
       simulationActive: {},
       loading: false,
       error: null,
+      carreras: [],
+      gruposAcademicos: [],
+      cohortes: [],
+      sexos: [],
+
+      fetchCarreras: async () => {
+        set({ loading: true, error: null });
+        try {
+          const list = await catalogService.getCarreras();
+          set({ carreras: list, loading: false });
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+        }
+      },
+      createCarrera: async (c) => {
+        set({ loading: true, error: null });
+        try {
+          await catalogService.createCarrera(c);
+          await get().fetchCarreras();
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+          throw err;
+        }
+      },
+      removeCarrera: async (id) => {
+        set({ loading: true, error: null });
+        try {
+          await catalogService.deleteCarrera(id);
+          await get().fetchCarreras();
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+          throw err;
+        }
+      },
+
+      fetchGrupos: async () => {
+        set({ loading: true, error: null });
+        try {
+          const list = await catalogService.getGrupos();
+          set({ gruposAcademicos: list, loading: false });
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+        }
+      },
+      createGrupo: async (g) => {
+        set({ loading: true, error: null });
+        try {
+          await catalogService.createGrupo(g);
+          await get().fetchGrupos();
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+          throw err;
+        }
+      },
+      removeGrupo: async (id) => {
+        set({ loading: true, error: null });
+        try {
+          await catalogService.deleteGrupo(id);
+          await get().fetchGrupos();
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+          throw err;
+        }
+      },
+
+      fetchCohortes: async () => {
+        set({ loading: true, error: null });
+        try {
+          const list = await catalogService.getCohortes();
+          set({ cohortes: list, loading: false });
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+        }
+      },
+      createCohorte: async (c) => {
+        set({ loading: true, error: null });
+        try {
+          await catalogService.createCohorte(c);
+          await get().fetchCohortes();
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+          throw err;
+        }
+      },
+      removeCohorte: async (id) => {
+        set({ loading: true, error: null });
+        try {
+          await catalogService.deleteCohorte(id);
+          await get().fetchCohortes();
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+          throw err;
+        }
+      },
+
+      fetchSexos: async () => {
+        set({ loading: true, error: null });
+        try {
+          const list = await catalogService.getSexos();
+          set({ sexos: list, loading: false });
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+        }
+      },
+      createSexo: async (s) => {
+        set({ loading: true, error: null });
+        try {
+          await catalogService.createSexo(s);
+          await get().fetchSexos();
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+          throw err;
+        }
+      },
+      removeSexo: async (id) => {
+        set({ loading: true, error: null });
+        try {
+          await catalogService.deleteSexo(id);
+          await get().fetchSexos();
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+          throw err;
+        }
+      },
 
       fetchParticipants: async () => {
         set({ loading: true, error: null });
         try {
+          const state = get();
+          const [
+            carreras,
+            cohortes,
+            gruposAcademicos,
+            sexos
+          ] = await Promise.all([
+            state.carreras.length > 0 ? Promise.resolve(state.carreras) : catalogService.getCarreras(),
+            state.cohortes.length > 0 ? Promise.resolve(state.cohortes) : catalogService.getCohortes(),
+            state.gruposAcademicos.length > 0 ? Promise.resolve(state.gruposAcademicos) : catalogService.getGrupos(),
+            state.sexos.length > 0 ? Promise.resolve(state.sexos) : catalogService.getSexos(),
+          ]);
+
           const res = await apiClient.get('/participantes');
           if (res.data.success) {
-            const mapped = res.data.data.map((p: any) => ({
-              id: p.id,
-              name: `${p.nombres} ${p.apellidos}`,
-              age: p.fechaNacimiento ? new Date().getFullYear() - new Date(p.fechaNacimiento).getFullYear() : 21,
-              sex: p.sexo?.codigo || 'F',
-              carrera: p.carrera?.nombreCarrera || 'Psicología',
-              grupo: p.grupoAcademico?.nombreGrupo || '3A',
-              registeredAt: p.creadoEn ? p.creadoEn.split('T')[0] : new Date().toISOString().split('T')[0],
-              latestAttemptStatus: p.estado || 'NO_INICIADO',
+            const mapped = res.data.data.map((p: any) => mapParticipant(p, {
+              carreras,
+              cohortes,
+              gruposAcademicos,
+              sexos,
             }));
-            set({ participants: mapped, loading: false });
+            set({
+              participants: mapped,
+              carreras,
+              cohortes,
+              gruposAcademicos,
+              sexos,
+              loading: false
+            });
           } else {
             throw new Error(res.data.message);
           }
@@ -203,18 +366,6 @@ export const useAdminStore = create<AdminState>()(
         }
       },
 
-      fetchPublishedVersions: async () => {
-        try {
-          const res = await apiClient.get('/tests/1/versions');
-          if (res.data.success) {
-            const published = res.data.data.filter((v: any) => v.estado === 'PUBLICADO');
-            set({ publishedVersions: published });
-          }
-        } catch (err) {
-          console.error('Error fetching versions:', err);
-        }
-      },
-
       fetchVersionSubtests: async (versionId: string) => {
         try {
           const res = await apiClient.get(`/test-versions/${versionId}/subtests`);
@@ -261,15 +412,17 @@ export const useAdminStore = create<AdminState>()(
             const assignRes = await apiClient.post(`/sesiones/${sessionId}/asignaciones`, {
               participantId: pId
             });
-            if (assignRes.data.success) {
-              const assigned = assignRes.data.data;
-              const assignmentId = String(assigned.assignmentId);
-              newTokens[assignmentId] = `${assignmentId}-${assigned.rawToken}`;
+            if (!assignRes.data.success) {
+              throw new Error(assignRes.data.message || `No se pudo asignar el participante ${pId}.`);
             }
+            const assigned = assignRes.data.data;
+            const assignmentId = String(assigned.assignmentId);
+            newTokens[assignmentId] = `${assignmentId}-${assigned.rawToken}`;
           }
 
           set({ generatedTokens: newTokens });
           await get().fetchSessions();
+          await get().fetchAssignments(String(sessionId));
         } catch (err: any) {
           set({ error: err.message, loading: false });
           throw err;
