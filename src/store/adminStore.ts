@@ -36,6 +36,7 @@ export interface SessionAssignment {
   state: 'no-iniciado' | 'en-progreso' | 'completado' | 'interrumpido' | 'anulado';
   lastActivity: string;
   assignmentId: number;
+  attemptId?: number | null;
 }
 
 export interface Incidence {
@@ -86,8 +87,9 @@ interface AdminState {
   ) => Promise<void>;
   updateSessionStatus: (sessionId: string, status: Session['status']) => Promise<void>;
   assignParticipantToSession: (sessionId: string, participantId: string) => Promise<void>;
+  revokeAssignment: (sessionId: string, assignmentId: number) => Promise<void>;
   updateAssignmentStatus: (sessionId: string, participantId: string, status: SessionAssignment['status']) => Promise<void>;
-  addIncidence: (sessionId: string, participantId: string, text: string) => void;
+  addIncidence: (sessionId: string, participantId: string, text: string) => Promise<void>;
   setSimulationActive: (sessionId: string, active: boolean) => void;
   tickSimulation: (sessionId: string) => void;
 }
@@ -185,7 +187,8 @@ export const useAdminStore = create<AdminState>()(
                 overallProgress: a.overallProgress || 0,
                 state: a.state as SessionAssignment['state'],
                 lastActivity: a.lastActivity ? (a.lastActivity.includes('T') ? a.lastActivity.split('T')[1].slice(0, 5) : a.lastActivity) : 'Nunca',
-                assignmentId: a.assignmentId
+                assignmentId: a.assignmentId,
+                attemptId: a.attemptId ?? null
               };
             });
             set((state) => ({
@@ -204,14 +207,27 @@ export const useAdminStore = create<AdminState>()(
       },
 
       fetchPublishedVersions: async () => {
+        set({ error: null });
         try {
-          const res = await apiClient.get('/tests/1/versions');
-          if (res.data.success) {
-            const published = res.data.data.filter((v: any) => v.estado === 'PUBLICADO');
-            set({ publishedVersions: published });
+          const testsRes = await apiClient.get('/tests');
+          if (!testsRes.data.success) throw new Error(testsRes.data.message);
+          const tests = testsRes.data.data || [];
+          const allVersions: any[] = [];
+          for (const test of tests) {
+            const versionsRes = await apiClient.get(`/tests/${test.id}/versions`);
+            if (versionsRes.data.success) {
+              allVersions.push(...versionsRes.data.data.map((version: any) => ({
+                ...version,
+                testId: test.id,
+                testName: test.nombreTest,
+                testCode: test.codigoTest,
+              })));
+            }
           }
-        } catch (err) {
-          console.error('Error fetching versions:', err);
+          const published = allVersions.filter((v: any) => v.estado === 'PUBLICADO');
+          set({ publishedVersions: published });
+        } catch (err: any) {
+          set({ error: err.message || "No se pudieron cargar versiones publicadas." });
         }
       },
 
@@ -226,8 +242,8 @@ export const useAdminStore = create<AdminState>()(
               }
             }));
           }
-        } catch (err) {
-          console.error('Error fetching subtests:', err);
+        } catch (err: any) {
+          set({ error: err.message || "No se pudieron cargar subtests." });
         }
       },
 
@@ -320,41 +336,46 @@ export const useAdminStore = create<AdminState>()(
         }
       },
 
-      updateAssignmentStatus: async (sessionId, participantId, status) => {
-        set((state) => {
-          const sessionAsgs = state.assignments[sessionId] || [];
-          const updated = sessionAsgs.map((a) => {
-            if (a.participantId === participantId) {
-              return {
-                ...a,
-                status,
-                state: status === 'REVOCADO' ? 'anulado' as const : a.state
-              };
-            }
-            return a;
-          });
-          return {
-            assignments: {
-              ...state.assignments,
-              [sessionId]: updated
-            }
-          };
-        });
+      updateAssignmentStatus: async () => {
+        throw new Error("El backend actual no expone cambio de estado individual de asignacion.");
       },
 
-      addIncidence: (sessionId, participantId, text) => {
-        const participantName = get().participants.find(p => p.id === participantId)?.name || 'Participante';
-        const newIncidence: Incidence = {
-          id: `inc-${Date.now()}`,
-          sessionId,
-          participantId,
-          participantName,
-          timestamp: new Date().toLocaleTimeString('es-NI', { hour: '2-digit', minute: '2-digit' }),
-          text
-        };
-        set((state) => ({
-          incidences: [newIncidence, ...state.incidences]
-        }));
+      revokeAssignment: async (sessionId, assignmentId) => {
+        set({ loading: true, error: null });
+        try {
+          const res = await apiClient.post(`/sesiones/${sessionId}/asignaciones/${assignmentId}/revocar`);
+          if (!res.data.success) throw new Error(res.data.message);
+          await get().fetchAssignments(sessionId);
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+          throw err;
+        }
+      },
+
+      addIncidence: async (sessionId, participantId, text) => {
+        set({ loading: true, error: null });
+        try {
+          const res = await apiClient.post(`/sesiones/${sessionId}/incidencias`, { participantId, text });
+          if (!res.data.success) throw new Error(res.data.message);
+          const participant = get().participants.find((p) => p.id === participantId);
+          set((state) => ({
+            incidences: [
+              {
+                id: String(res.data.data.id || Date.now()),
+                sessionId,
+                participantId,
+                participantName: participant?.name || "Participante",
+                timestamp: new Date().toLocaleTimeString(),
+                text
+              },
+              ...state.incidences
+            ],
+            loading: false
+          }));
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+          throw err;
+        }
       },
 
       setSimulationActive: (sessionId, active) => {

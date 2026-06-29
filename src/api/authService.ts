@@ -49,6 +49,9 @@ export const authService = {
     } catch (error) {
       throw error;
     }
+  },
+
+  async requestPasswordReset(usernameOrEmail: string): Promise<void> {
+    await apiClient.post("/auth/password-reset", { usernameOrEmail });
   }
 };
-

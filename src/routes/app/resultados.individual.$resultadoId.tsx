@@ -1,9 +1,12 @@
+import { useEffect, useState } from "react";
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { ArrowLeft, ShieldCheck, Download, AlertTriangle } from "lucide-react";
 import { Button } from "../../app/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../app/components/ui/card";
 import { Badge } from "../../app/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../app/components/ui/table";
+import { Alert, AlertDescription } from "../../app/components/ui/alert";
+import { adminService, downloadDataFile, toCsv } from "../../api/adminService";
 
 export const Route = createFileRoute("/app/resultados/individual/$resultadoId")({
   component: ResultadoIndividualDetailRoute,
@@ -11,23 +14,28 @@ export const Route = createFileRoute("/app/resultados/individual/$resultadoId")(
 
 function ResultadoIndividualDetailRoute() {
   const { resultadoId } = useParams({ from: "/app/resultados/individual/$resultadoId" });
+  const [result, setResult] = useState<any | null>(null);
+  const [error, setError] = useState("");
 
-  const mockResult = {
-    resultId: resultadoId,
-    participant: {
-      id: "P-0184",
-      displayName: "Ana María Pérez",
-      demographicSummary: "Femenino, 21 años, Psicología 3A",
-    },
-    session: { id: "SES-2026-06-A", name: "Psicología I - Aplicación Digital" },
-    status: "CALCULADO",
-    totalScore: 74,
-    dimensions: [
-      { dimensionName: "Figuras idénticas (Atención selectiva)", rawScore: 28, percentile: 85, category: "Alto", interpretation: "Excelente capacidad para identificar detalles visuales específicos con rapidez." },
-      { dimensionName: "Desplazamiento (Atención dividida)", rawScore: 18, percentile: 72, category: "Medio-Alto", interpretation: "Buena capacidad de retención y análisis de transformaciones visuales." },
-      { dimensionName: "Espacial (Orientación espacial)", rawScore: 16, percentile: 68, category: "Medio", interpretation: "Habilidad promedio en razonamiento y rotación mental." }
-    ],
-    disclaimer: "ADVERTENCIA: Este reporte muestra resultados aprobados por el baremo BFA digital para fines de investigación académica y práctica supervisada. No constituye un diagnóstico clínico o psicológico definitivo por sí mismo."
+  useEffect(() => {
+    adminService.getAttemptResult(resultadoId)
+      .then(setResult)
+      .catch((err) => setError(err.message || "No se pudo cargar el resultado."));
+  }, [resultadoId]);
+
+  const exportCsv = () => {
+    if (!result) return;
+    downloadDataFile(`resultado-intento-${result.attemptId}.csv`, "text/csv;charset=utf-8", toCsv((result.dimensions || []).map((d: any) => ({
+      attemptId: result.attemptId,
+      resultId: result.resultId,
+      status: result.status,
+      totalScore: result.totalScore,
+      dimension: d.name,
+      directScore: d.directScore,
+      percentile: d.percentile,
+      category: d.category,
+      interpretation: d.interpretation,
+    }))));
   };
 
   return (
@@ -38,39 +46,40 @@ function ResultadoIndividualDetailRoute() {
             <ArrowLeft className="h-4 w-4 mr-1" /> Volver a resultados
           </Link>
         </Button>
-        <Button size="sm" variant="outline">
-          <Download className="h-4 w-4 mr-1" /> Exportar PDF Seguro
+        <Button size="sm" variant="outline" onClick={exportCsv} disabled={!result}>
+          <Download className="h-4 w-4 mr-1" /> Exportar CSV
         </Button>
       </div>
 
-      <Card className="border-0 shadow-sm">
-        <CardHeader>
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div>
-              <CardTitle className="text-xl">Reporte Individual Confidencial</CardTitle>
-              <CardDescription>Resultado de evaluación del participante</CardDescription>
-            </div>
-            <Badge className="bg-emerald-100 text-emerald-800 border-none font-semibold">
-              <ShieldCheck className="h-3.5 w-3.5 mr-1" /> {mockResult.status}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid sm:grid-cols-2 gap-4 bg-muted/20 p-4 rounded-md border text-sm">
-            <div>
-              <span className="text-xs text-muted-foreground block">Participante</span>
-              <span className="font-semibold text-foreground">{mockResult.participant.displayName} ({mockResult.participant.id})</span>
-              <span className="block text-xs text-muted-foreground mt-0.5">{mockResult.participant.demographicSummary}</span>
-            </div>
-            <div>
-              <span className="text-xs text-muted-foreground block">Sesión de Aplicación</span>
-              <span className="font-semibold text-foreground">{mockResult.session.name}</span>
-              <span className="block text-xs text-muted-foreground mt-0.5">ID: {mockResult.session.id}</span>
-            </div>
-          </div>
+      {error && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
-          <div className="space-y-2 mt-6">
-            <h3 className="text-sm font-semibold text-foreground">Desglose por Dimensión</h3>
+      {!result ? (
+        <Card className="border-0 shadow-sm"><CardContent className="p-8 text-center text-sm text-muted-foreground">Cargando resultado real del intento {resultadoId}...</CardContent></Card>
+      ) : (
+        <Card className="border-0 shadow-sm">
+          <CardHeader>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <CardTitle className="text-xl">Reporte Individual Confidencial</CardTitle>
+                <CardDescription>Resultado de evaluación por intento</CardDescription>
+              </div>
+              <Badge className="bg-emerald-100 text-emerald-800 border-none font-semibold">
+                <ShieldCheck className="h-3.5 w-3.5 mr-1" /> {result.status}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid sm:grid-cols-3 gap-4 bg-muted/20 p-4 rounded-md border text-sm">
+              <div><span className="text-xs text-muted-foreground block">Intento</span><span className="font-semibold">{result.attemptId}</span></div>
+              <div><span className="text-xs text-muted-foreground block">Resultado</span><span className="font-semibold">{result.resultId}</span></div>
+              <div><span className="text-xs text-muted-foreground block">Puntaje total</span><span className="font-semibold">{result.totalScore}</span></div>
+            </div>
+
             <Table>
               <TableHeader>
                 <TableRow>
@@ -81,35 +90,27 @@ function ResultadoIndividualDetailRoute() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {mockResult.dimensions.map((d) => (
-                  <TableRow key={d.dimensionName}>
+                {(result.dimensions || []).map((d: any) => (
+                  <TableRow key={d.dimensionId}>
                     <TableCell>
-                      <div>
-                        <div className="font-semibold text-sm text-foreground">{d.dimensionName}</div>
-                        <div className="text-xs text-muted-foreground mt-0.5">{d.interpretation}</div>
-                      </div>
+                      <div className="font-semibold text-sm text-foreground">{d.name}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">{d.interpretation || "Sin interpretación registrada."}</div>
                     </TableCell>
-                    <TableCell className="text-center font-semibold">{d.rawScore}</TableCell>
-                    <TableCell className="text-center font-mono text-primary font-semibold">{d.percentile}</TableCell>
-                    <TableCell className="text-center">
-                      <Badge className="bg-blue-50 text-blue-800 border-blue-100 font-medium">
-                        {d.category}
-                      </Badge>
-                    </TableCell>
+                    <TableCell className="text-center font-semibold">{d.directScore}</TableCell>
+                    <TableCell className="text-center font-mono text-primary font-semibold">{d.percentile ?? "—"}</TableCell>
+                    <TableCell className="text-center"><Badge className="bg-blue-50 text-blue-800 border-blue-100 font-medium">{d.category || "—"}</Badge></TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          </div>
 
-          <div className="flex items-start gap-2.5 p-3 rounded bg-amber-50 border border-amber-100 mt-6">
-            <AlertTriangle className="h-4 w-4 text-amber-700 shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-900 leading-relaxed font-medium">
-              {mockResult.disclaimer}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+            <div className="flex items-start gap-2.5 p-3 rounded bg-amber-50 border border-amber-100">
+              <AlertTriangle className="h-4 w-4 text-amber-700 shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-900 leading-relaxed font-medium">{result.disclaimer}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

@@ -42,6 +42,7 @@ function SubtestInstruccionesRoute() {
 
   const [confirmed, setConfirmed] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   if (!accessData) return null;
 
@@ -51,6 +52,7 @@ function SubtestInstruccionesRoute() {
   const handleStart = async () => {
     if (!confirmed) return;
     setLoading(true);
+    setErrorMessage("");
     try {
       await participantService.startSubtest(token, subtestId);
       
@@ -73,8 +75,8 @@ function SubtestInstruccionesRoute() {
       
       // Redirigir al primer reactivo
       navigate({ to: `/evaluacion/${token}/subtests/${subtestId}/items/it-1` });
-    } catch (error) {
-      alert("Error al iniciar el subtest. Por favor contacte al aplicador.");
+    } catch (error: any) {
+      setErrorMessage(error.message || "Error al iniciar el subtest. Por favor contacte al aplicador.");
     } finally {
       setLoading(false);
     }
@@ -116,6 +118,13 @@ function SubtestInstruccionesRoute() {
               Al presionar "Iniciar subtest", el tiempo límite comenzará a correr. No podrá pausar el tiempo ni recargar la prueba para reiniciarlo.
             </AlertDescription>
           </Alert>
+
+          {errorMessage && (
+            <Alert variant="destructive" className="mt-4">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>{errorMessage}</AlertDescription>
+            </Alert>
+          )}
 
           <div className="mt-6 flex items-center gap-2">
             <Checkbox id="confirm" checked={confirmed} onCheckedChange={(v) => setConfirmed(!!v)} />

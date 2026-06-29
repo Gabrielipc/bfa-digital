@@ -22,11 +22,11 @@ function ResumenRoute() {
   const syncQueue = useEvaluationStore((s) => s.syncQueue);
   const isOffline = useEvaluationStore((s) => s.isOffline);
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   // Sincronizar en el mount y con eventos de red
   useEffect(() => {
     const handleOnline = async () => {
-      console.log("Navegador online en Resumen. Sincronizando...");
       await participantService.syncPendingAnswers(token);
     };
 
@@ -51,20 +51,21 @@ function ResumenRoute() {
   if (!accessData) return null;
 
   const handleFinish = async () => {
+    setErrorMessage("");
     if (syncQueue.length > 0) {
-      alert("No se puede finalizar la evaluación. Hay respuestas locales pendientes debido a una conexión inestable. Intentando sincronizar...");
+      setErrorMessage("Hay respuestas locales pendientes por conexión inestable. Intentando sincronizar antes de finalizar...");
       setLoading(true);
       try {
         await participantService.syncPendingAnswers(token);
         // Volver a verificar la cola
         const currentQueue = useEvaluationStore.getState().syncQueue;
         if (currentQueue.length > 0) {
-          alert("Aún no se ha podido restablecer la conexión. Por favor espere o verifique su red.");
+          setErrorMessage("Aún no se ha podido restablecer la conexión. Espere o verifique su red.");
           setLoading(false);
           return;
         }
       } catch (err) {
-        alert("Error al sincronizar las respuestas. Por favor intente de nuevo.");
+        setErrorMessage("Error al sincronizar las respuestas. Por favor intente de nuevo.");
         setLoading(false);
         return;
       }
@@ -78,8 +79,8 @@ function ResumenRoute() {
       clearStore();
       
       navigate({ to: `/evaluacion/${token}/completada` });
-    } catch (error) {
-      alert("Error al finalizar la evaluación. Por favor intente de nuevo.");
+    } catch (error: any) {
+      setErrorMessage(error.message || "Error al finalizar la evaluación. Por favor intente de nuevo.");
     } finally {
       setLoading(false);
     }
@@ -121,6 +122,13 @@ function ResumenRoute() {
               <AlertDescription className="text-rose-950 text-xs font-bold leading-relaxed">
                 Atención: Tiene {syncQueue.length} {syncQueue.length === 1 ? "respuesta pendiente" : "respuestas pendientes"} por sincronizar debido a problemas de conexión. Por favor, asegúrese de tener internet antes de finalizar la entrega definitiva.
               </AlertDescription>
+            </Alert>
+          )}
+
+          {errorMessage && (
+            <Alert variant="destructive" className="mt-6">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription className="text-xs font-semibold">{errorMessage}</AlertDescription>
             </Alert>
           )}
 

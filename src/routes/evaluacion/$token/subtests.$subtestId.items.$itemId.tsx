@@ -33,6 +33,7 @@ function SubtestItemRunnerRoute() {
   const [itemData, setItemData] = useState<ParticipantItemDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingState, setSavingState] = useState<"idle" | "saving" | "saved" | "error">("saved");
+  const [errorMessage, setErrorMessage] = useState("");
 
   // Buscar el subtest correspondiente en la configuración
   const subtestInfo = accessData?.subtests.find((s) => s.id === subtestId);
@@ -44,6 +45,7 @@ function SubtestItemRunnerRoute() {
     const fetchItem = async () => {
       setLoading(true);
       try {
+        setErrorMessage("");
         const item = await participantService.getItem(token, subtestId, itemId);
         setItemData(item);
         
@@ -52,8 +54,8 @@ function SubtestItemRunnerRoute() {
         if (item.selectedOptionId && !answers[`${subtestId}-${itemId}`]) {
           setAnswer(subtestId, itemId, item.selectedOptionId);
         }
-      } catch (error) {
-        console.error("Error al cargar reactivo:", error);
+      } catch (error: any) {
+        setErrorMessage(error.message || "Error al cargar reactivo.");
       } finally {
         setLoading(false);
       }
@@ -83,7 +85,6 @@ function SubtestItemRunnerRoute() {
   // Sincronizador de red automático en segundo plano
   useEffect(() => {
     const handleOnline = async () => {
-      console.log("Navegador de vuelta online. Sincronizando lote...");
       await participantService.syncPendingAnswers(token);
     };
 
@@ -105,14 +106,14 @@ function SubtestItemRunnerRoute() {
 
   // Manejador de fin de tiempo
   const handleTimeout = async () => {
-    alert("¡El tiempo límite del subtest se ha agotado!");
+    setErrorMessage("El tiempo límite del subtest se ha agotado. Finalizando subtest...");
     await finishSubtestFlow();
   };
 
   const finishSubtestFlow = async () => {
     // Si quedan respuestas pendientes de sincronizar en la cola local, bloquear finalización
     if (syncQueue.length > 0) {
-      alert("No se puede finalizar el subtest. Hay respuestas pendientes por conexión inestable. Espere unos momentos a que se guarden.");
+      setErrorMessage("No se puede finalizar el subtest porque hay respuestas pendientes por conexión inestable. Intentando sincronizar...");
       setSavingState("saving");
       await participantService.syncPendingAnswers(token);
       setSavingState("saved");
@@ -134,8 +135,8 @@ function SubtestItemRunnerRoute() {
       }
       
       navigate({ to: `/evaluacion/${token}/subtests` });
-    } catch (error) {
-      alert("Error al finalizar el subtest. Intente de nuevo.");
+    } catch (error: any) {
+      setErrorMessage(error.message || "Error al finalizar el subtest. Intente de nuevo.");
     }
   };
 
@@ -143,7 +144,7 @@ function SubtestItemRunnerRoute() {
     setAnswer(subtestId, itemId, optionId);
     setSavingState("saving");
     try {
-      await participantService.saveAnswer(token, subtestId, itemId, optionId);
+      await participantService.saveAnswer(token, subtestId, itemData?.itemId || itemId, optionId);
       
       // Si la cola está limpia tras saveAnswer, marcar como guardado
       if (useEvaluationStore.getState().syncQueue.length === 0) {
@@ -165,8 +166,9 @@ function SubtestItemRunnerRoute() {
           subtests: updatedSubtests,
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       setSavingState("error");
+      setErrorMessage(error.message || "Error al guardar respuesta.");
     }
   };
 
@@ -244,6 +246,12 @@ function SubtestItemRunnerRoute() {
         </div>
       )}
 
+      {errorMessage && (
+        <div className="bg-amber-50 border-b border-amber-200 py-2.5 px-4 text-amber-950">
+          <div className="max-w-5xl mx-auto text-xs sm:text-sm font-semibold">{errorMessage}</div>
+        </div>
+      )}
+
       {/* Main Reactivo Area */}
       <main className="flex-1 overflow-y-auto p-4 md:p-6 flex flex-col justify-between max-w-5xl w-full mx-auto">
         <Card className="border-0 shadow-sm flex-1 flex flex-col bg-white">
@@ -261,7 +269,7 @@ function SubtestItemRunnerRoute() {
               </div>
             ) : (
               <>
-                {/* Visualizador de Modelo (SVGs mock para simular las figuras de la BFA) */}
+                {/* Visualizador de modelo */}
                 <div className="my-6 rounded-lg border bg-muted/10 p-6 flex items-center justify-center select-none"
                   onContextMenu={(e) => e.preventDefault()}>
                   <FigureModel subtestId={subtestId} itemIndex={currentOrdinal} />
@@ -332,7 +340,7 @@ function SubtestItemRunnerRoute() {
   );
 }
 
-// Modelos SVGs interactivos simulando BFA
+// Modelos SVGs interactivos BFA
 function FigureModel({ subtestId, itemIndex }: { subtestId: string; itemIndex: number }) {
   if (subtestId === "figuras") {
     return (
@@ -371,13 +379,12 @@ function FigureModel({ subtestId, itemIndex }: { subtestId: string; itemIndex: n
   );
 }
 
-// Opciones SVGs simulando respuestas
+// Opciones SVGs de respuesta
 function FigureOption({ subtestId, optionIndex, itemIndex, subtle }: { subtestId: string; optionIndex: number; itemIndex: number; subtle: boolean }) {
   const color = subtle ? "text-muted-foreground" : "text-primary";
   const opacity = subtle ? 0.6 : 1;
   
   if (subtestId === "figuras") {
-    // Opción correcta simulada es index 1 (B)
     if (optionIndex === 1) {
       return (
         <svg width="50" height="50" viewBox="0 0 50 50" className={color} style={{ opacity }}>

@@ -9,8 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Badge } from "../../app/components/ui/badge";
 import { Progress } from "../../app/components/ui/progress";
 import { Avatar, AvatarFallback } from "../../app/components/ui/avatar";
+import { Alert, AlertDescription } from "../../app/components/ui/alert";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../app/components/ui/dialog";
-import { Label } from "../../app/components/ui/label";
 import { Textarea } from "../../app/components/ui/textarea";
 
 export const Route = createFileRoute("/app/sesiones/$id")({
@@ -31,12 +31,10 @@ function SessionDetailRoute() {
   
   const fetchSessions = useAdminStore((s) => s.fetchSessions);
   const fetchAssignments = useAdminStore((s) => s.fetchAssignments);
+  const [noteTarget, setNoteTarget] = useState<SessionAssignment | null>(null);
+  const [noteText, setNoteText] = useState("");
+  const [actionError, setActionError] = useState("");
 
-  // Estados locales para la toma de incidencias
-  const [selectedPartId, setSelectedPartId] = useState<string | null>(null);
-  const [selectedPartName, setSelectedPartName] = useState("");
-  const [isIncidenceDialogOpen, setIsIncidenceDialogOpen] = useState(false);
-  const [incidenceText, setIncidenceText] = useState("");
 
   // Polling para traer sesiones y asignaciones reales del backend
   useEffect(() => {
@@ -68,19 +66,6 @@ function SessionDetailRoute() {
   const completedCount = assignments.filter(a => a.state === "completado").length;
   const issueCount = assignments.filter(a => a.state === "interrumpido").length;
   const idleCount = assignments.filter(a => a.state === "no-iniciado").length;
-
-  const handleOpenIncidence = (partId: string, name: string) => {
-    setSelectedPartId(partId);
-    setSelectedPartName(name);
-    setIncidenceText("");
-    setIsIncidenceDialogOpen(true);
-  };
-
-  const handleSaveIncidence = () => {
-    if (!selectedPartId || !incidenceText.trim()) return;
-    addIncidence(id, selectedPartId, incidenceText.trim());
-    setIsIncidenceDialogOpen(false);
-  };
 
   const getSubtestBadgeText = (subId: string) => {
     switch (subId) {
@@ -116,6 +101,18 @@ function SessionDetailRoute() {
         return <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 border-none font-medium"><AlertTriangle className="h-3 w-3 mr-1" /> Desconectado</Badge>;
       case "anulado":
         return <Badge className="bg-rose-100 text-rose-800 hover:bg-rose-100 border-none font-medium">Anulado</Badge>;
+    }
+  };
+
+  const saveIncidence = async () => {
+    if (!noteTarget || !noteText.trim()) return;
+    try {
+      setActionError("");
+      await addIncidence(id, noteTarget.participantId, noteText.trim());
+      setNoteTarget(null);
+      setNoteText("");
+    } catch (err: any) {
+      setActionError(err.message || "No se pudo registrar la incidencia.");
     }
   };
 
@@ -158,6 +155,7 @@ function SessionDetailRoute() {
       </div>
 
       {/* KPI Cards */}
+      {actionError && <Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertDescription>{actionError}</AlertDescription></Alert>}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <Card className="border-0 shadow-sm">
           <CardContent className="p-4 flex items-center gap-3">
@@ -284,22 +282,18 @@ function SessionDetailRoute() {
                           variant="ghost" 
                           size="sm" 
                           className="h-8 text-xs hover:bg-amber-50 hover:text-amber-700"
-                          onClick={() => handleOpenIncidence(asg.participantId, asg.participantName)}
-                          disabled={asg.state === "completado" || asg.state === "anulado"}
+                          onClick={() => setNoteTarget(asg)}
                         >
                           <MessageSquare className="h-3.5 w-3.5 mr-1" /> Nota
                         </Button>
                         {asg.state === "completado" && (
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-8 text-xs hover:bg-primary/5 hover:text-primary"
-                            asChild
-                          >
-                            <Link to={`/app/resultados/individual/${asg.participantId}`}>
-                              Ver reporte
-                            </Link>
-                          </Button>
+                          asg.attemptId ? (
+                            <Button variant="ghost" size="sm" className="h-8 text-xs hover:bg-primary/5 hover:text-primary" asChild>
+                              <Link to={`/app/resultados/individual/${asg.attemptId}`}>Ver reporte</Link>
+                            </Button>
+                          ) : (
+                            <Button variant="ghost" size="sm" className="h-8 text-xs" disabled title="El backend no reportó attemptId para esta asignación completada.">Sin attemptId</Button>
+                          )
                         )}
                       </div>
                     </TableCell>
@@ -342,32 +336,20 @@ function SessionDetailRoute() {
         </CardContent>
       </Card>
 
-      {/* dialog to write incidence */}
-      <Dialog open={isIncidenceDialogOpen} onOpenChange={setIsIncidenceDialogOpen}>
-        <DialogContent className="max-w-md">
+      <Dialog open={!!noteTarget} onOpenChange={(open) => !open && setNoteTarget(null)}>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Registrar Nota de Supervisión</DialogTitle>
-            <DialogDescription>
-              Escriba una incidencia o nota sobre la evaluación de <strong>{selectedPartName}</strong>.
-            </DialogDescription>
+            <DialogTitle>Registrar incidencia</DialogTitle>
+            <DialogDescription>Se guardará en auditoría del backend para esta sesión.</DialogDescription>
           </DialogHeader>
-          <div className="py-4 space-y-3">
-            <Label htmlFor="incidence-text" className="text-xs text-muted-foreground font-bold uppercase tracking-wide">Comentario / Observación</Label>
-            <Textarea 
-              id="incidence-text"
-              rows={3} 
-              placeholder="Describa la observación. Ejemplo: 'Sufrió una breve interrupción de red', 'Reporta fatiga visual'."
-              value={incidenceText}
-              onChange={(e) => setIncidenceText(e.target.value)}
-              className="resize-none focus-visible:ring-primary/30"
-            />
-          </div>
+          <Textarea value={noteText} onChange={(e) => setNoteText(e.target.value)} placeholder="Detalle de la incidencia" />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsIncidenceDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSaveIncidence} disabled={!incidenceText.trim()}>Guardar Observación</Button>
+            <Button variant="outline" onClick={() => setNoteTarget(null)}>Cancelar</Button>
+            <Button onClick={saveIncidence} disabled={!noteText.trim()}>Guardar nota</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
     </div>
   );
 }

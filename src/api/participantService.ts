@@ -1,5 +1,4 @@
 import { apiClient } from "./axios";
-import { useAuthStore } from "../store/authStore";
 import { useEvaluationStore } from "../store/evaluationStore";
 import { ParticipantEvaluationAccessDTO } from "../routes/evaluacion.$token";
 import {
@@ -32,6 +31,14 @@ export interface ParticipantItemDTO {
   selectedOptionId?: string;
 }
 
+function toBackendSubtestId(subtestId: string): number {
+  const parsed = Number(subtestId);
+  if (!Number.isNaN(parsed)) return parsed;
+  if (subtestId === "figuras") return 1;
+  if (subtestId === "desplazamiento") return 2;
+  return 3;
+}
+
 export const participantService = {
   // 1. Validar acceso con el token
   async validateAccess(tokenInput: string): Promise<ParticipantEvaluationAccessDTO> {
@@ -57,8 +64,8 @@ export const participantService = {
 
       const accessResult = accessResponse.data.data;
       
-      // Guardar el token en el store global para que las siguientes peticiones de Axios vayan autorizadas
-      useAuthStore.getState().setToken(accessResult.accessToken);
+      // Guardar token de participante separado para no reemplazar la sesión administrativa.
+      useEvaluationStore.getState().setParticipantToken(accessResult.accessToken);
       
       // Guardar el assignmentId en el store del examen para usarlo después
       useEvaluationStore.getState().setAccessData({
@@ -88,7 +95,7 @@ export const participantService = {
         attemptStatus: meData.attemptStatus || meData.status || "NO_INICIADO",
         allowedActions: ["start"],
         subtests: (meData.subtests || []).map((s: any) => ({
-          id: s.code || s.id,
+          id: String(s.id || s.subtestId || s.code),
           name: s.name,
           instructionsAvailable: true,
           status: s.status || "NO_INICIADO",
@@ -146,7 +153,7 @@ export const participantService = {
       const attemptId = await this.getOrCreateAttemptId();
       
       // Mapeo del subtestId al ID numérico del backend
-      const subtestIdNum = subtestId === "figuras" ? 1 : subtestId === "desplazamiento" ? 2 : 3;
+      const subtestIdNum = toBackendSubtestId(subtestId);
 
       await apiClient.post(`/intentos/${attemptId}/subtests/${subtestIdNum}/iniciar`);
     } catch (error) {
@@ -158,7 +165,7 @@ export const participantService = {
   async getItem(token: string, subtestId: string, itemIdStr: string): Promise<ParticipantItemDTO> {
     try {
       const attemptId = await this.getOrCreateAttemptId();
-      const subtestIdNum = subtestId === "figuras" ? 1 : subtestId === "desplazamiento" ? 2 : 3;
+      const subtestIdNum = toBackendSubtestId(subtestId);
 
       // Obtener todos los reactivos del subtest
       const response = await apiClient.get<ApiResponse<any>>(`/intentos/${attemptId}/subtests/${subtestIdNum}/items`);
@@ -244,9 +251,7 @@ export const participantService = {
       // Limpiar cola si fue exitoso
       store.clearQueue();
       store.setOffline(false);
-      console.log("Sincronización exitosa en lote de respuestas pendientes.");
     } catch (error) {
-      console.error("Fallo al sincronizar respuestas pendientes, reintentando después:", error);
       store.setOffline(true);
     }
   },
@@ -255,7 +260,7 @@ export const participantService = {
   async finishSubtest(token: string, subtestId: string, timeUsedSeconds: number = 0): Promise<void> {
     try {
       const attemptId = await this.getOrCreateAttemptId();
-      const subtestIdNum = subtestId === "figuras" ? 1 : subtestId === "desplazamiento" ? 2 : 3;
+      const subtestIdNum = toBackendSubtestId(subtestId);
 
       await apiClient.post(`/intentos/${attemptId}/subtests/${subtestIdNum}/finalizar`, {
         timeSeconds: timeUsedSeconds

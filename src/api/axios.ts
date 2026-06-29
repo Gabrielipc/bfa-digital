@@ -1,9 +1,10 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
+import { useEvaluationStore } from '../store/evaluationStore';
 
 // Crear instancia de Axios
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080/', // Ajusta esto según tu Spring Boot
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8081/',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -12,7 +13,21 @@ export const apiClient = axios.create({
 // Interceptor para agregar el JWT a las peticiones
 apiClient.interceptors.request.use(
   (config) => {
-    const token = useAuthStore.getState().token;
+    if (typeof FormData !== "undefined" && config.data instanceof FormData) {
+      const headers = config.headers as any;
+      if (typeof headers?.delete === "function") {
+        headers.delete("Content-Type");
+      } else if (headers) {
+        delete headers["Content-Type"];
+        delete headers["content-type"];
+      }
+    }
+    const url = String(config.url || "");
+    const isParticipantRequest = url.startsWith("/evaluacion-participante")
+      || url.startsWith("/intentos/");
+    const token = isParticipantRequest
+      ? useEvaluationStore.getState().participantToken
+      : useAuthStore.getState().token;
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -29,10 +44,9 @@ apiClient.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       const isLoginRequest = error.config?.url?.includes("/auth/login");
-      if (!isLoginRequest) {
-        // Manejar cierre de sesión o token expirado
+      const isSessionCheck = error.config?.url?.includes("/auth/me");
+      if (!isLoginRequest && isSessionCheck) {
         useAuthStore.getState().logout();
-        window.location.href = '/login'; // O redirigir con el router
       }
     }
     return Promise.reject(error);

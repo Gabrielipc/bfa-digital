@@ -35,6 +35,7 @@ function LoginRoute() {
   const [user, setUserInput] = useState("");
   const [pass, setPass] = useState("");
   const [err, setErr] = useState("");
+  const [info, setInfo] = useState("");
   const [loading, setLoading] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
@@ -46,6 +47,7 @@ function LoginRoute() {
 
     setLoading(true);
     setErr("");
+    setInfo("");
 
     try {
       const result = await authService.login(user, pass);
@@ -59,10 +61,38 @@ function LoginRoute() {
     }
   };
 
-  const handleDemoFill = (role: string) => {
-    setUserInput(role);
-    setPass("1234");
+  const handleDemoLogin = async (role: string) => {
+    setLoading(true);
     setErr("");
+    setInfo("");
+    try {
+      const result = await authService.login(role, "1234");
+      setToken(result.token);
+      setUser(result.user);
+      navigate({ to: "/app/dashboard" });
+    } catch (error: any) {
+      setErr(error.message || "No se pudo iniciar sesión con el acceso rápido.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    if (!user.trim()) {
+      setErr("Ingrese usuario o correo para solicitar recuperación.");
+      return;
+    }
+    setLoading(true);
+    setErr("");
+    setInfo("");
+    try {
+      await authService.requestPasswordReset(user.trim());
+      setInfo("Solicitud de recuperación registrada en backend.");
+    } catch (error: any) {
+      setErr(error.message || "No se pudo registrar la recuperación.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -102,6 +132,12 @@ function LoginRoute() {
                 <AlertDescription>{err}</AlertDescription>
               </Alert>
             )}
+            {info && (
+              <Alert className="mt-4">
+                <ShieldCheck className="h-4 w-4" />
+                <AlertDescription>{info}</AlertDescription>
+              </Alert>
+            )}
 
             <form onSubmit={submit} className="mt-6 space-y-4">
               <div className="space-y-1.5">
@@ -127,15 +163,16 @@ function LoginRoute() {
               </div>
               
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Accesos Rápidos (DEMO)</Label>
+                <Label className="text-xs text-muted-foreground">Accesos rápidos</Label>
                 <div className="grid grid-cols-2 gap-1.5">
                   {DEMO_ROLES.map((r) => (
                     <button
                       key={r.v}
                       type="button"
-                      onClick={() => handleDemoFill(r.v)}
                       disabled={loading}
-                      className="text-xs rounded border border-border bg-muted/40 hover:bg-muted py-1.5 px-2 text-left transition text-foreground truncate"
+                      onClick={() => handleDemoLogin(r.v)}
+                      title="Ejecuta login real contra /auth/login."
+                      className="text-xs rounded border border-border bg-muted/40 py-1.5 px-2 text-left transition hover:bg-accent truncate disabled:opacity-60"
                     >
                       {r.l}
                     </button>
@@ -147,7 +184,9 @@ function LoginRoute() {
                 <button
                   type="button"
                   disabled={loading}
-                  className="text-xs text-primary hover:underline"
+                  onClick={handlePasswordReset}
+                  title="Registra solicitud real de recuperación en backend."
+                  className="text-xs text-primary hover:underline disabled:text-muted-foreground"
                 >
                   Olvidé mi contraseña
                 </button>

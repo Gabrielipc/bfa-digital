@@ -1,9 +1,12 @@
+import { useEffect, useState } from "react";
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { ArrowLeft, Plus, Play } from "lucide-react";
 import { Button } from "../../app/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../app/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../app/components/ui/table";
 import { Badge } from "../../app/components/ui/badge";
+import { Alert, AlertDescription } from "../../app/components/ui/alert";
+import { adminService } from "../../api/adminService";
 
 export const Route = createFileRoute("/app/instrumentos/$versionId")({
   component: InstrumentVersionDetailRoute,
@@ -11,12 +14,14 @@ export const Route = createFileRoute("/app/instrumentos/$versionId")({
 
 function InstrumentVersionDetailRoute() {
   const { versionId } = useParams({ from: "/app/instrumentos/$versionId" });
+  const [subtests, setSubtests] = useState<any[]>([]);
+  const [error, setError] = useState("");
 
-  const subtests = [
-    { id: "figuras", name: "Figuras idénticas", items: 30, state: "publicado", version: "v2.1" },
-    { id: "desplazamiento", name: "Desplazamiento", items: 24, state: "publicado", version: "v1.4" },
-    { id: "espacial", name: "Espacial", items: 20, state: "borrador", version: "v1.2" },
-  ];
+  useEffect(() => {
+    adminService.listSubtests(versionId)
+      .then(setSubtests)
+      .catch((err) => setError(err.message || "No se pudieron cargar subtests."));
+  }, [versionId]);
 
   return (
     <div className="space-y-6">
@@ -34,9 +39,12 @@ function InstrumentVersionDetailRoute() {
             <CardTitle>Versión del Instrumento: {versionId}</CardTitle>
             <CardDescription>Detalle y configuración de los subtests e ítems psicométricos.</CardDescription>
           </div>
-          <Button size="sm"><Plus className="h-4 w-4 mr-1" /> Agregar Subtest</Button>
+          <Button size="sm" asChild title="Abre el panel principal donde se crea el subtest y se valida estado BORRADOR.">
+            <Link to="/app/instrumentos"><Plus className="h-4 w-4 mr-1" /> Agregar Subtest</Link>
+          </Button>
         </CardHeader>
         <CardContent>
+          {error && <Alert variant="destructive" className="mb-4"><AlertDescription>{error}</AlertDescription></Alert>}
           <Table>
             <TableHeader>
               <TableRow>
@@ -48,14 +56,16 @@ function InstrumentVersionDetailRoute() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {subtests.map((s) => (
+              {subtests.length === 0 ? (
+                <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Sin subtests reales.</TableCell></TableRow>
+              ) : subtests.map((s) => (
                 <TableRow key={s.id}>
-                  <TableCell className="font-semibold text-foreground">{s.name}</TableCell>
-                  <TableCell className="font-mono text-xs">{s.version}</TableCell>
-                  <TableCell>{s.items} Reactivos</TableCell>
+                  <TableCell className="font-semibold text-foreground">{s.nombreSubtest}</TableCell>
+                  <TableCell className="font-mono text-xs">{s.codigoSubtest}</TableCell>
+                  <TableCell>Consultar detalle</TableCell>
                   <TableCell>
-                    <Badge className={s.state === "publicado" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}>
-                      {s.state}
+                    <Badge className={s.estado === "ACTIVO" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}>
+                      {s.estado}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">

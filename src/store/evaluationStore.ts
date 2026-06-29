@@ -5,6 +5,7 @@ import { SaveAnswerRequest } from '../api/types';
 
 interface EvaluationState {
   accessData: ParticipantEvaluationAccessDTO | null;
+  participantToken: string | null;
   attemptId: number | null;
   timeLeft: number;
   activeSubtestId: string | null;
@@ -15,6 +16,7 @@ interface EvaluationState {
   isOffline: boolean;
   
   setAccessData: (accessData: ParticipantEvaluationAccessDTO | null) => void;
+  setParticipantToken: (token: string | null) => void;
   setAttemptId: (attemptId: number | null) => void;
   setTimeLeft: (time: number | ((prev: number) => number)) => void;
   setActiveSubtestId: (id: string | null) => void;
@@ -31,6 +33,7 @@ export const useEvaluationStore = create<EvaluationState>()(
   persist(
     (set, get) => ({
       accessData: null,
+      participantToken: null,
       attemptId: null,
       timeLeft: 0,
       activeSubtestId: null,
@@ -39,6 +42,8 @@ export const useEvaluationStore = create<EvaluationState>()(
       isOffline: false,
 
       setAccessData: (accessData) => set({ accessData }),
+
+      setParticipantToken: (participantToken) => set({ participantToken }),
       
       setAttemptId: (attemptId) => set({ attemptId }),
 
@@ -69,6 +74,7 @@ export const useEvaluationStore = create<EvaluationState>()(
 
       clearStore: () => set({
         accessData: null,
+        participantToken: null,
         attemptId: null,
         timeLeft: 0,
         activeSubtestId: null,
@@ -81,6 +87,7 @@ export const useEvaluationStore = create<EvaluationState>()(
       partialize: (state) => ({
         // Solo persistimos lo crítico de la prueba para no saturar localStorage
         accessData: state.accessData,
+        participantToken: state.participantToken,
         attemptId: state.attemptId,
         timeLeft: state.timeLeft,
         activeSubtestId: state.activeSubtestId,

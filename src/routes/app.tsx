@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { createFileRoute, Outlet, Link, redirect, useNavigate, useLocation } from "@tanstack/react-router";
 import { useAuthStore, normalizeRole } from "../store/authStore";
 import { Brand } from "../app/components/brand";
@@ -10,6 +10,7 @@ import { Input } from "../app/components/ui/input";
 import { Avatar, AvatarFallback } from "../app/components/ui/avatar";
 import { Badge } from "../app/components/ui/badge";
 import { Button } from "../app/components/ui/button";
+import { adminService } from "../api/adminService";
 
 export const Route = createFileRoute("/app")({
   beforeLoad: () => {
@@ -75,10 +76,13 @@ function AppLayout() {
   const location = useLocation();
   const logout = useAuthStore((s) => s.logout);
   const user = useAuthStore((s) => s.user);
+  const [query, setQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [panel, setPanel] = useState<"search" | "notifications" | null>(null);
 
   const rawRole = user?.roles[0] || "aplicador";
   const role = normalizeRole(rawRole);
-  console.log("[AppLayout] Current user:", user, "-> rawRole:", rawRole, "-> resolved role:", role);
   const initials = user?.displayName
     ? user.displayName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()
     : "US";
@@ -86,6 +90,24 @@ function AppLayout() {
   const handleLogout = () => {
     logout();
     navigate({ to: "/login" });
+  };
+
+  const runSearch = async () => {
+    const value = query.trim();
+    if (value.length < 2) {
+      setSearchResults([]);
+      setPanel(null);
+      return;
+    }
+    const rows = await adminService.searchGlobal(value);
+    setSearchResults(rows);
+    setPanel("search");
+  };
+
+  const loadNotifications = async () => {
+    const rows = await adminService.listNotifications();
+    setNotifications(rows);
+    setPanel(panel === "notifications" ? null : "notifications");
   };
 
   // Título e información dinámica para la cabecera del módulo actual
@@ -177,7 +199,35 @@ function AppLayout() {
           <div className="hidden md:flex items-center gap-2 flex-1 max-w-md">
             <div className="relative w-full">
               <Search className="h-4 w-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Buscar participantes, sesiones, ítems…" className="pl-8 bg-muted/50 border-0 focus-visible:ring-primary/40 focus-visible:bg-white transition" />
+              <Input
+                placeholder="Búsqueda global"
+                className="pl-8 bg-muted/50 border-0 focus-visible:ring-primary/40 focus-visible:bg-white transition"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") runSearch();
+                }}
+              />
+              {panel === "search" && (
+                <div className="absolute z-50 mt-2 w-full rounded-md border bg-white shadow-lg max-h-80 overflow-auto">
+                  {searchResults.length === 0 ? (
+                    <div className="p-3 text-xs text-muted-foreground">Sin resultados.</div>
+                  ) : searchResults.map((row) => (
+                    <button
+                      key={`${row.type}-${row.id}`}
+                      type="button"
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-muted"
+                      onClick={() => {
+                        setPanel(null);
+                        navigate({ to: row.path });
+                      }}
+                    >
+                      <div className="font-medium">{row.label}</div>
+                      <div className="text-xs text-muted-foreground">{row.type}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
           
@@ -187,7 +237,23 @@ function AppLayout() {
             Confidencial UAM
           </Badge>
           
-          <Button variant="ghost" size="icon"><Bell className="h-4 w-4" /></Button>
+          <div className="relative">
+            <Button variant="ghost" size="icon" onClick={loadNotifications} title="Consultar notificaciones">
+              <Bell className="h-4 w-4" />
+            </Button>
+            {panel === "notifications" && (
+              <div className="absolute right-0 z-50 mt-2 w-80 rounded-md border bg-white shadow-lg max-h-96 overflow-auto">
+                {notifications.length === 0 ? (
+                  <div className="p-3 text-xs text-muted-foreground">Sin notificaciones.</div>
+                ) : notifications.map((n) => (
+                  <div key={n.id} className="px-3 py-2 border-b last:border-b-0">
+                    <div className="text-sm font-medium">{n.action}</div>
+                    <div className="text-xs text-muted-foreground">{n.entity}:{n.entityId || "s/id"} · {n.createdAt}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </header>
 
         {/* Dynamic Section Header */}
@@ -199,8 +265,10 @@ function AppLayout() {
         </div>
 
         {/* Route Outlet */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#fafafa]">
-          <Outlet />
+        <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-4 md:p-6 bg-[#fafafa]">
+          <div className="mx-auto w-full max-w-[1500px] min-w-0">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>
