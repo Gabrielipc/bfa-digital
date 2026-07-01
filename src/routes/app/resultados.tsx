@@ -1,6 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { ResultsScreen } from "../../app/components/screens/admin/results";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/app/resultados")({
-  component: ResultsScreen,
+  component: () => <Outlet />,
 });

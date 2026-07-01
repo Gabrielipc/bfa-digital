@@ -246,27 +246,38 @@ function AttemptScoringRoute() {
                       <TableCell>{renderAttemptState(assignment.state)}</TableCell>
                       <TableCell>{renderResultState(resultState)}</TableCell>
                       <TableCell className="pr-6 text-right">
-                        {resultState.status === "ready" ? (
-                          <Button size="sm" variant="outline" asChild>
-                            <Link to={`/app/resultados/individual/${resultState.result.resultId}`}>
-                              <Eye className="mr-1 h-4 w-4" /> Ver resultado
-                            </Link>
-                          </Button>
-                        ) : canScore ? (
-                          <Button size="sm" onClick={() => handleScore(assignment)} disabled={scoringAttemptId === attemptId}>
-                            {scoringAttemptId === attemptId ? (
-                              <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                            ) : (
-                              <ArrowRight className="mr-1 h-4 w-4" />
-                            )}
-                            Calificar
-                          </Button>
-                        ) : (
-                          <Button size="sm" variant="outline" disabled>
-                            No disponible
-                          </Button>
-                        )}
+                        <div className="flex items-center justify-end gap-1.5">
+                          {attemptId && (
+                            <Button size="sm" variant="outline" asChild>
+                              <Link to="/app/resultados/intento/$attemptId" params={{ attemptId: String(attemptId) }}>
+                                Respuestas
+                              </Link>
+                            </Button>
+                          )}
+                          {resultState.status === "ready" ? (
+                            <Button size="sm" variant="outline" asChild className="bg-primary/5 hover:bg-primary/10 border-primary/20 text-primary">
+                              <Link to="/app/resultados/individual/$attemptId" params={{ attemptId: String(attemptId) }}>
+                                <Eye className="mr-1 h-4 w-4" /> Baremo
+                              </Link>
+                            </Button>
+                          ) : canScore ? (
+                            <Button size="sm" onClick={() => handleScore(assignment)} disabled={scoringAttemptId === attemptId}>
+                              {scoringAttemptId === attemptId ? (
+                                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                              ) : (
+                                <ArrowRight className="mr-1 h-4 w-4" />
+                              )}
+                              Calificar
+                            </Button>
+                          ) : null}
+                          {!attemptId && (
+                            <Button size="sm" variant="outline" disabled>
+                              No disponible
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
+
                     </TableRow>
                   );
                 })

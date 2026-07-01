@@ -57,7 +57,106 @@ export interface AttemptResultDTO {
   status: string;
   totalScore: number;
   dimensions: AttemptDimensionResultDTO[];
+  totalInterpretation?: {
+    baremoId: number;
+    baremoCode: string;
+    rangeId: number;
+    category: string;
+    percentile: number;
+    interpretation: string | null;
+    recommendation: string | null;
+  } | null;
   disclaimer: string;
+}
+
+export interface DetailedAttemptResultDTO {
+  attemptId: number;
+  demographics: {
+    carrera: string;
+    grupo: string;
+    cohorte: string;
+    nombres: string;
+    apellidos: string;
+    codigo: string;
+    firstNames?: string;
+    lastNames?: string;
+    code?: string;
+  };
+  metrics: {
+    durationSeconds?: number | null;
+    duracionSeconds?: number | null;
+    duracion?: number | null;
+    ipAddress?: string | null;
+    ip?: string | null;
+    deviceInfo?: string | null;
+    dispositivo?: string | null;
+    state: string;
+    estado?: string;
+  };
+  globalScores: {
+    puntajeTotalDirecto: number | null;
+    correctas: number | null;
+    cantidadCorrectas?: number | null;
+    incorrectas: number | null;
+    cantidadIncorrectas?: number | null;
+    pendientesRevisionManual: number | null;
+    cantidadPendientesRevision?: number | null;
+  } | null;
+  subtests: Array<{
+    subtestId?: number;
+    id: number;
+    name?: string;
+    nombre: string;
+    order?: number;
+    orden: number;
+    items: Array<{
+      itemId?: number;
+      id: number;
+      order?: number;
+      orden: number;
+      prompt?: string;
+      enunciado: string;
+      itemType: string;
+      tipoItem?: string;
+      responseType: string;
+      tipoRespuesta?: string;
+      imagenes?: Array<{
+        id?: number;
+        url?: string;
+        publicUrl?: string;
+        signedUrl?: string;
+        altText?: string;
+        textoAlternativo?: string;
+      }>;
+      options: Array<{
+        optionId?: number;
+        id: number;
+        text?: string;
+        texto?: string;
+        order?: number;
+        orden: number;
+        imagenes?: Array<{
+          id?: number;
+          url?: string;
+          publicUrl?: string;
+          signedUrl?: string;
+          altText?: string;
+          textoAlternativo?: string;
+        }>;
+        correct?: boolean | null;
+        esCorrecta?: boolean | null;
+      }>;
+      selectedOptionIds: number[];
+      textAnswer?: string | null;
+      numericAnswer?: number | null;
+      correct?: boolean | null;
+      esCorrecto?: boolean | null;
+      score?: number | null;
+      puntaje?: number | null;
+      requiresManualReview?: boolean;
+      timeUsedSeconds?: number;
+    }>;
+  }>;
 }
 
 export const resultsService = {
@@ -119,5 +218,14 @@ export const resultsService = {
   // Enviar calificación manual
   async submitReview(reviewId: string, status: "CORRECTA" | "INCORRECTA"): Promise<void> {
     await apiClient.put(`/resultados/revisiones/${reviewId}`, { status });
+  },
+
+  // Obtener resultado detallado de un intento (completo o en progreso)
+  async getDetailedAttemptResult(attemptId: number): Promise<DetailedAttemptResultDTO> {
+    const response = await apiClient.get<ApiResponse<DetailedAttemptResultDTO>>(`/attempts/${attemptId}/detailed-result`);
+    if (!response.data.success || !response.data.data) {
+      throw new Error(response.data.error?.message || response.data.message || "No se pudo obtener el resultado detallado del intento.");
+    }
+    return response.data.data;
   }
 };

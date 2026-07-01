@@ -305,6 +305,18 @@ function SessionDetailRoute() {
                         >
                           <MessageSquare className="h-3.5 w-3.5 mr-1" /> Nota
                         </Button>
+                        {asg.attemptId && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 text-xs hover:bg-primary/5 hover:text-primary"
+                            asChild
+                          >
+                            <Link to="/app/resultados/intento/$attemptId" params={{ attemptId: String(asg.attemptId) }}>
+                              Ver respuestas
+                            </Link>
+                          </Button>
+                        )}
                         {asg.state === "completado" && (
                           asg.attemptId ? (
                             <Button
@@ -314,7 +326,7 @@ function SessionDetailRoute() {
                               asChild
                             >
                               <Link to="/app/calificaciones">
-                                Calificar / ver resultado
+                                Calificar
                               </Link>
                             </Button>
                           ) : (
