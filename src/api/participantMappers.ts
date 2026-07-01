@@ -160,7 +160,7 @@ export function normalizeResource(raw: unknown, index = 0): ParticipantResourceD
   if (kind === "TEXT" && !text && !url) return null;
 
   return {
-    id: asString(firstValue(record, ["id", "resourceId", "imagenId"]), `resource-${index + 1}`),
+    id: asString(firstValue(record, ["id", "resourceId", "imagenId", "imageId"]), `resource-${index + 1}`),
     kind,
     url,
     text,

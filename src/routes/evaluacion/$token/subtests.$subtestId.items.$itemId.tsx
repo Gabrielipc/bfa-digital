@@ -12,6 +12,7 @@ import {
 import { participantService, ParticipantItemDTO } from "../../../api/participantService";
 import { ParticipantResourceDTO } from "../../../api/participantMappers";
 import { useEvaluationStore } from "../../../store/evaluationStore";
+import { apiClient } from "../../../api/axios";
 
 export const Route = createFileRoute("/evaluacion/$token/subtests/$subtestId/items/$itemId")({
   component: SubtestItemRunnerRoute,
@@ -360,11 +361,107 @@ function ResourceView({ resource, compact }: { resource: ParticipantResourceDTO;
   if (!resource.url) return null;
 
   return (
-    <img
+    <AuthenticatedImage
       src={resource.url}
       alt={resource.altText || ""}
       draggable={false}
       className={`mx-auto object-contain select-none ${compact ? "max-h-28 max-w-full" : "max-h-[360px] max-w-full"}`}
+    />
+  );
+}
+
+const isBackendUrl = (url: string): boolean => {
+  const apiBase = (import.meta.env.VITE_API_URL || "http://localhost:8080").replace(/\/+$/, "");
+  return url.startsWith("/") || url.startsWith(apiBase);
+};
+
+const getRelativeApiPath = (url: string): string => {
+  const apiBase = (import.meta.env.VITE_API_URL || "http://localhost:8080").replace(/\/+$/, "");
+  if (url.startsWith(apiBase)) {
+    return url.slice(apiBase.length);
+  }
+  return url;
+};
+
+interface AuthenticatedImageProps {
+  src: string;
+  alt?: string;
+  className?: string;
+  draggable?: boolean;
+}
+
+export function AuthenticatedImage({ src, alt, className, draggable }: AuthenticatedImageProps) {
+  const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    if (!src) return;
+
+    if (!isBackendUrl(src)) {
+      setObjectUrl(src);
+      setLoading(false);
+      return;
+    }
+
+    let isMounted = true;
+    const fetchImage = async () => {
+      try {
+        setLoading(true);
+        setError(false);
+        const relativePath = getRelativeApiPath(src);
+        const response = await apiClient.get(relativePath, { responseType: "blob" });
+        if (isMounted) {
+          const blobUrl = URL.createObjectURL(response.data);
+          setObjectUrl(blobUrl);
+        }
+      } catch (err) {
+        console.error("Error loading authenticated image:", err);
+        if (isMounted) {
+          setError(true);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchImage();
+
+    return () => {
+      isMounted = false;
+      if (objectUrl && !/^(data:|blob:)/i.test(objectUrl)) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [src]);
+
+  if (loading) {
+    return (
+      <div className={`flex items-center justify-center bg-muted animate-pulse rounded min-h-[120px] max-w-full ${className}`}>
+        <span className="text-xs text-muted-foreground font-semibold">Cargando recurso visual...</span>
+      </div>
+    );
+  }
+
+  if (error || !objectUrl) {
+    return (
+      <div className={`flex items-center justify-center bg-rose-50 border border-rose-100 rounded text-rose-500 min-h-[120px] max-w-full ${className}`}>
+        <div className="text-center p-4">
+          <AlertTriangle className="h-5 w-5 mx-auto mb-1.5 text-rose-500" />
+          <span className="text-xs font-semibold">Error al cargar recurso</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={objectUrl}
+      alt={alt}
+      draggable={draggable}
+      className={className}
     />
   );
 }
