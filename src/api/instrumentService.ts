@@ -95,6 +95,15 @@ export const instrumentService = {
     return data(await apiClient.patch<ApiResponse<SubtestDTO>>(`/subtests/${subtestId}`, request));
   },
 
+  async getSubtestCloneTemplate(subtestId: number | string): Promise<any> {
+    return data(await apiClient.get<ApiResponse<any>>(`/subtests/${subtestId}/clone-template`));
+  },
+
+  async saveVersionConfiguration(versionId: number | string, request: { subtests: any[] }): Promise<any> {
+    return data(await apiClient.post<ApiResponse<any>>(`/test-versions/${versionId}/configuration`, request));
+  },
+
+
   async getItems(subtestId: string | number): Promise<ItemDTO[]> {
     return data(await apiClient.get<ApiResponse<ItemDTO[]>>(`/subtests/${subtestId}/items`));
   },
@@ -102,6 +111,40 @@ export const instrumentService = {
   async addItem(subtestId: string | number, request: ItemRequest): Promise<ItemDTO> {
     return data(await apiClient.post<ApiResponse<ItemDTO>>(`/subtests/${subtestId}/items`, request));
   },
+
+  async addItemWithImage(
+    subtestId: string | number,
+    item: ItemRequest,
+    file?: File,
+    imageOrder?: number,
+    altText?: string,
+    role = "ENUNCIADO",
+  ): Promise<ItemDTO> {
+    const formData = new FormData();
+    const itemBlob = new Blob([JSON.stringify(item)], {
+      type: "application/json",
+    });
+    formData.append("item", itemBlob);
+    if (file) {
+      formData.append("file", file);
+    }
+    if (imageOrder !== undefined) {
+      formData.append("imageOrder", String(imageOrder));
+    }
+    if (altText !== undefined) {
+      formData.append("altText", altText);
+    }
+    formData.append("role", role);
+
+    return data(
+      await apiClient.post<ApiResponse<ItemDTO>>(`/subtests/${subtestId}/items-with-image`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }),
+    );
+  },
+
 
   async updateItem(itemId: string | number, request: ItemRequest): Promise<ItemDTO> {
     return data(await apiClient.patch<ApiResponse<ItemDTO>>(`/items/${itemId}`, request));

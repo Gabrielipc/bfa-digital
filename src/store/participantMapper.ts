@@ -48,6 +48,7 @@ export function mapParticipant(raw: any, catalogs: ParticipantCatalogs): Partici
     name: [raw.nombres || raw.firstNames, raw.apellidos || raw.lastNames].filter(Boolean).join(" ").trim() || raw.nombre || "Participante",
     age: getAge(raw.fechaNacimiento),
     sex: sexo?.codigo || raw.sexoCodigo || raw.sex || "-",
+    fechaNacimiento: raw.fechaNacimiento || "-",
     carreraId,
     carrera: carrera?.nombreCarrera || raw.nombreCarrera || raw.carreraNombre || "-",
     cohorteId,

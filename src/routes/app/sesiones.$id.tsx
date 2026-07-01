@@ -313,8 +313,8 @@ function SessionDetailRoute() {
                               className="h-8 text-xs hover:bg-primary/5 hover:text-primary"
                               asChild
                             >
-                              <Link to={`/app/resultados/individual/${asg.attemptId}`}>
-                                Ver reporte
+                              <Link to="/app/calificaciones">
+                                Calificar / ver resultado
                               </Link>
                             </Button>
                           ) : (

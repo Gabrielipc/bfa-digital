@@ -27,6 +27,39 @@ export interface DashboardMetricsDTO {
   bySex: Array<{ n: string; v: number }>;
 }
 
+export interface ScoreAttemptResultDTO {
+  id: number;
+  intentoId: number;
+  estrategiaCalificacionId: number;
+  calculadoPorId: string;
+  calculadoEn: string;
+  puntajeTotalDirecto: number;
+  cantidadItems: number;
+  cantidadCorrectas: number;
+  cantidadIncorrectas: number;
+  cantidadPendientesRevision: number;
+  requiereRevisionManual: boolean;
+  estado: "CALCULADO" | string;
+}
+
+export interface AttemptDimensionResultDTO {
+  dimensionId: number;
+  name: string;
+  directScore: number;
+  category: string | null;
+  percentile: number | null;
+  interpretation: string | null;
+}
+
+export interface AttemptResultDTO {
+  attemptId: number;
+  resultId: number;
+  status: string;
+  totalScore: number;
+  dimensions: AttemptDimensionResultDTO[];
+  disclaimer: string;
+}
+
 export const resultsService = {
   // Obtener lista de resultados con filtros
   async getResults(filters: any = {}): Promise<any[]> {
@@ -43,6 +76,22 @@ export const resultsService = {
   // Obtener métricas agregadas del dashboard
   async getDashboardData(filters: any = {}): Promise<DashboardMetricsDTO> {
     const response = await apiClient.get<ApiResponse<DashboardMetricsDTO>>("/resultados/dashboard", { params: filters });
+    return response.data.data;
+  },
+
+  async scoreAttempt(attemptId: number): Promise<ScoreAttemptResultDTO> {
+    const response = await apiClient.post<ApiResponse<ScoreAttemptResultDTO>>(`/attempts/${attemptId}/score`);
+    if (!response.data.success || !response.data.data) {
+      throw new Error(response.data.error?.message || response.data.message || "No se pudo calificar el intento.");
+    }
+    return response.data.data;
+  },
+
+  async getAttemptResult(attemptId: number): Promise<AttemptResultDTO> {
+    const response = await apiClient.get<ApiResponse<AttemptResultDTO>>(`/attempts/${attemptId}/result`);
+    if (!response.data.success || !response.data.data) {
+      throw new Error(response.data.error?.message || response.data.message || "El intento todavia no tiene resultado.");
+    }
     return response.data.data;
   },
 

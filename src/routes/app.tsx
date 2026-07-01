@@ -5,7 +5,7 @@ import { Brand } from "../app/components/brand";
 import {
   LayoutDashboard, Users, ClipboardList, Activity, FileBarChart,
   Settings2, ImageUp, ShieldCheck, UserCog, ListChecks, LogOut, Bell, Search, Database,
-  BookOpen, Layers, Calendar
+  BookOpen, Layers, Calendar, ClipboardCheck
 } from "lucide-react";
 import { Input } from "../app/components/ui/input";
 import { Avatar, AvatarFallback } from "../app/components/ui/avatar";
@@ -61,6 +61,7 @@ const NAV_GROUPS: { group: string; items: NavItem[] }[] = [
   {
     group: "Resultados",
     items: [
+      { to: "/app/calificaciones", label: "Calificar intentos", icon: ClipboardCheck, roles: ["psicologo", "admin"] },
       { to: "/app/resultados", label: "Resultados individuales", icon: FileBarChart, roles: ["psicologo", "consultor", "admin"] },
       { to: "/app/dashboard-resultados", label: "Resultados agregados", icon: LayoutDashboard, roles: ["psicologo", "consultor", "admin"] },
       { to: "/app/reportes", label: "Centro de reportes", icon: FileBarChart, roles: ["psicologo", "consultor", "admin"] },
@@ -108,6 +109,7 @@ function AppLayout() {
     if (path.includes("/app/instrumentos")) return { t: "Configuración de pruebas", s: "Tests, versiones, subtests, ítems y claves" };
     if (path.includes("/app/carga-imagenes")) return { t: "Carga de imágenes confidenciales", s: "Recursos visuales de los ítems" };
     if (path.includes("/app/revision-manual")) return { t: "Bandeja de revisión manual", s: "Respuestas abiertas pendientes de calificar" };
+    if (path.includes("/app/calificaciones")) return { t: "Calificación de intentos", s: "Ejecución manual de scoring para intentos completados" };
     if (path.includes("/app/resultados")) return { t: "Resultados individuales", s: "Reporte psicométrico por participante" };
     if (path.includes("/app/dashboard-resultados")) return { t: "Resultados agregados", s: "Análisis estadístico y demográfico" };
     if (path.includes("/app/reportes")) return { t: "Centro de reportes", s: "Exportación de datos en PDF, Excel y CSV" };

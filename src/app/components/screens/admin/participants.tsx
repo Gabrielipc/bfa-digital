@@ -77,11 +77,14 @@ export function ParticipantsScreen() {
     label: c.nombreCohorte,
     description: [c.codigoCohorte, c.anio, c.periodo].filter(Boolean).join(" · "),
   }));
-  const grupoOptions = activeGrupos.map((g) => ({
-    value: String(g.id),
-    label: g.nombreGrupo || g.codigoGrupo,
-    description: [g.codigoGrupo, g.carrera?.nombreCarrera].filter(Boolean).join(" · "),
-  }));
+  const grupoOptions = activeGrupos.map((g) => {
+    const careerName = g.carrera?.nombreCarrera || (g.carrera?.id ? carreras.find(c => c.id === g.carrera?.id)?.nombreCarrera : undefined);
+    return {
+      value: String(g.id),
+      label: g.nombreGrupo || g.codigoGrupo,
+      description: [g.codigoGrupo, careerName].filter(Boolean).join(" · "),
+    };
+  });
   const sexoOptions = activeSexos.map((s) => ({
     value: String(s.id),
     label: s.nombre,
@@ -248,6 +251,7 @@ export function ParticipantsScreen() {
             <TableRow>
               <TableHead className="font-semibold py-3 pl-6">Código</TableHead>
               <TableHead className="font-semibold py-3">Nombre</TableHead>
+              <TableHead className="font-semibold py-3">Fecha de Nacimiento</TableHead>
               <TableHead className="font-semibold py-3">Edad</TableHead>
               <TableHead className="font-semibold py-3">Sexo</TableHead>
               <TableHead className="font-semibold py-3">Carrera</TableHead>
@@ -259,7 +263,7 @@ export function ParticipantsScreen() {
           <TableBody>
             {filteredList.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
+                <TableCell colSpan={9} className="text-center py-10 text-muted-foreground">
                   No se encontraron participantes.
                 </TableCell>
               </TableRow>
@@ -268,7 +272,8 @@ export function ParticipantsScreen() {
                 <TableRow key={p.id} className="hover:bg-muted/10 transition">
                   <TableCell className="font-mono text-xs pl-6 py-3">{p.code}</TableCell>
                   <TableCell className="font-medium text-foreground py-3">{p.name}</TableCell>
-                  <TableCell className="py-3">{p.age} años</TableCell>
+                  <TableCell className="py-3 text-xs">{p.fechaNacimiento}</TableCell>
+                  <TableCell className="py-3">{p.fechaNacimiento && p.fechaNacimiento !== "-" ? `${p.age} años` : "-"}</TableCell>
                   <TableCell className="py-3">{p.sex === "F" ? "Femenino" : p.sex === "M" ? "Masculino" : "Otro"}</TableCell>
                   <TableCell className="py-3">{p.carrera}</TableCell>
                   <TableCell className="py-3"><Badge variant="secondary" className="font-medium">{p.grupo}</Badge></TableCell>

@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback } from "../../ui/avatar";
 import { Alert, AlertDescription, AlertTitle } from "../../ui/alert";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "../../ui/dialog";
 import { SearchableCombobox } from "../../ui/searchable-combobox";
-import { Plus, Copy, ChevronRight, Calendar, MapPin, KeyRound, ShieldCheck, AlertTriangle, Trash2, Lock } from "lucide-react";
+import { Plus, Copy, ChevronRight, Calendar, MapPin, KeyRound, ShieldCheck, AlertTriangle, Trash2, Lock, CheckCircle2Icon } from "lucide-react";
 import { Field } from "./shared";
 
 const EMPTY_ARRAY: any[] = [];
@@ -113,11 +113,14 @@ export function SessionCreateScreen() {
     label: c.nombreCohorte,
     description: [c.codigoCohorte, c.anio, c.periodo].filter(Boolean).join(" · "),
   }));
-  const grupoOptions = activeGrupos.map((g) => ({
-    value: String(g.id),
-    label: g.nombreGrupo || g.codigoGrupo,
-    description: [g.codigoGrupo, g.carrera?.nombreCarrera].filter(Boolean).join(" · "),
-  }));
+  const grupoOptions = activeGrupos.map((g) => {
+    const careerName = g.carrera?.nombreCarrera || (g.carrera?.id ? carreras.find(c => c.id === g.carrera?.id)?.nombreCarrera : undefined);
+    return {
+      value: String(g.id),
+      label: g.nombreGrupo || g.codigoGrupo,
+      description: [g.codigoGrupo, careerName].filter(Boolean).join(" · "),
+    };
+  });
   const sessionScope = [
     selectedCarrera?.nombreCarrera,
     selectedCohorte?.nombreCohorte,
@@ -511,7 +514,7 @@ export function SessionCreateScreen() {
                             {asg.token}
                           </code>
                           <Button variant="outline" size="icon" className="h-7 w-7 shrink-0" onClick={handleCopy}>
-                            {copiedTokenIdx === idx ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                            {copiedTokenIdx === idx ? <CheckCircle2Icon className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
                           </Button>
                         </div>
                       </div>

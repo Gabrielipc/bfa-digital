@@ -67,8 +67,11 @@ export const participantService = {
       );
       if (Number.isInteger(attemptId) && attemptId > 0) {
         useEvaluationStore.getState().setAttemptId(attemptId);
+        } 
+      else {
+        useEvaluationStore.getState().setAttemptId(null);
       }
-
+            
       return {
         ...normalized,
         assignmentId: String(accessResult.assignmentId),

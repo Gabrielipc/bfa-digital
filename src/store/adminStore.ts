@@ -11,6 +11,7 @@ export interface Participant {
   name: string;
   age: number;
   sex: string;
+  fechaNacimiento?: string;
   carreraId?: number;
   carrera: string;
   cohorteId?: number;

@@ -338,7 +338,11 @@ export function GruposScreen() {
                   <TableCell className="font-mono text-xs py-3">{g.codigoGrupo}</TableCell>
                   <TableCell className="font-medium text-foreground py-3">{g.nombreGrupo}</TableCell>
                   <TableCell className="py-3 text-muted-foreground text-xs font-semibold">
-                    {g.carrera ? g.carrera.nombreCarrera : "—"}
+                    {(() => {
+                      if (!g.carrera || !g.carrera.id) return "-";
+                      const career = carreras.find(c => c.id === g.carrera?.id);
+                      return career ? career.nombreCarrera : (g.carrera.nombreCarrera || "-");
+                    })()}
                   </TableCell>
                   <TableCell className="py-3">
                     <Badge className={g.estado === "ACTIVO" ? "bg-emerald-100 text-emerald-800 border-none font-medium hover:bg-emerald-100" : "bg-slate-100 text-slate-700 border-none font-medium hover:bg-slate-100"}>

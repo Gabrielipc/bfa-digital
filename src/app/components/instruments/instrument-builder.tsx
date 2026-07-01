@@ -81,6 +81,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Separator } from "../ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { Textarea } from "../ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+
 
 const DND_SUBTEST_ROW = "instrument-subtest-row";
 const DND_ITEM_ROW = "instrument-item-row";
@@ -210,6 +212,7 @@ export function InstrumentBuilderScreen() {
   const queryClient = useQueryClient();
   const [mode, setMode] = useState<"list" | "create">("list");
   const [notice, setNotice] = useState<string | null>(null);
+  const [versionToCreateFor, setVersionToCreateFor] = useState<InstrumentRow | null>(null);
   const [form, setForm] = useState<CreateInstrumentForm>({
     code: "",
     name: "",
@@ -448,6 +451,16 @@ export function InstrumentBuilderScreen() {
                                     <Settings2 className="h-4 w-4" />
                                     Modificar
                                   </a>
+                                  {!row.draftVersion && row.latestVersion && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => setVersionToCreateFor(row)}
+                                    >
+                                      <Plus className="mr-1.5 h-3.5 w-3.5" />
+                                      Nueva versión
+                                    </Button>
+                                  )}
                                 </>
                               ) : (
                                 <Button variant="outline" size="sm" onClick={() => openVersion(row)}>
@@ -470,19 +483,43 @@ export function InstrumentBuilderScreen() {
           </CardContent>
         </Card>
       )}
+      {versionToCreateFor && (
+        <CreateVersionDialog
+          open={!!versionToCreateFor}
+          onOpenChange={(open) => {
+            if (!open) setVersionToCreateFor(null);
+          }}
+          test={versionToCreateFor}
+          onCreated={(newVersion) => {
+            setVersionToCreateFor(null);
+            goToTest(versionToCreateFor.id);
+          }}
+        />
+      )}
     </div>
   );
+}
+
+interface SubtestDraftState extends SubtestDTO {
+  draftId?: string;
+  sourceId?: number | null;
+  status: "EXISTING" | "CREATED" | "UPDATED" | "DELETED";
+  items?: any[];
 }
 
 export function InstrumentVersionEditorScreen({ testId }: { testId: string }) {
   const queryClient = useQueryClient();
   const [notice, setNotice] = useState<string | null>(null);
-  const [selectedSubtestId, setSelectedSubtestId] = useState<number | null>(null);
-  const [subtestsDraft, setSubtestsDraft] = useState<SubtestDTO[]>([]);
+  const [isCreateVersionDialogOpen, setIsCreateVersionDialogOpen] = useState(false);
+  const [selectedSubtestId, setSelectedSubtestId] = useState<number | string | null>(null);
+  const [subtestsDraft, setSubtestsDraft] = useState<SubtestDraftState[]>([]);
   const [subtestOrderDirty, setSubtestOrderDirty] = useState(false);
   const [itemDraftDirty, setItemDraftDirty] = useState(false);
   const [baremoDirty, setBaremoDirty] = useState(false);
   const [isSubtestDialogOpen, setIsSubtestDialogOpen] = useState(false);
+  const [isReuseDialogOpen, setIsReuseDialogOpen] = useState(false);
+  const [editingSubtest, setEditingSubtest] = useState<SubtestDraftState | null>(null);
+  const [importingSubtest, setImportingSubtest] = useState(false);
   const [header, setHeader] = useState<VersionHeaderForm>({
     number: "",
     instructions: "",
@@ -537,7 +574,12 @@ export function InstrumentVersionEditorScreen({ testId }: { testId: string }) {
     enabled: !!version,
   });
 
-  const selectedSubtest = subtestsDraft.find((subtest) => subtest.id === selectedSubtestId) ?? null;
+  const selectedSubtest = subtestsDraft.find((subtest) => {
+    if (subtest.status === "DELETED") return false;
+    if (subtest.id && subtest.id === selectedSubtestId) return true;
+    if (subtest.draftId && subtest.draftId === selectedSubtestId) return true;
+    return false;
+  }) ?? null;
   const isDraftVersion = version?.estado === "BORRADOR";
   const canRandomizeSubtestContent = header.randomizeItems;
   const simpleStrategyId = findSimpleStrategyId(strategiesQuery.data ?? []);
@@ -595,14 +637,22 @@ export function InstrumentVersionEditorScreen({ testId }: { testId: string }) {
   }, [baremoRangesQuery.data]);
 
   useEffect(() => {
-    const ordered = [...(subtestsQuery.data ?? [])].sort((a, b) => a.numeroOrden - b.numeroOrden);
-    setSubtestsDraft(ordered);
-    setSubtestOrderDirty(false);
-    setSelectedSubtestId((current) => {
-      if (!ordered.length) return null;
-      if (!current || !ordered.some((subtest) => subtest.id === current)) return ordered[0].id;
-      return current;
-    });
+    if (subtestsQuery.data) {
+      const ordered = [...subtestsQuery.data]
+        .sort((a, b) => a.numeroOrden - b.numeroOrden)
+        .map((subtest) => ({
+          ...subtest,
+          status: "EXISTING" as const,
+        }));
+      setSubtestsDraft(ordered);
+      setSubtestOrderDirty(false);
+      setSelectedSubtestId((current) => {
+        if (!ordered.length) return null;
+        const exists = ordered.some((subtest) => subtest.id === current || subtest.draftId === current);
+        if (!current || !exists) return ordered[0].id;
+        return current;
+      });
+    }
   }, [subtestsQuery.data]);
 
   const updateVersion = useMutation({
@@ -620,10 +670,67 @@ export function InstrumentVersionEditorScreen({ testId }: { testId: string }) {
     },
   });
 
-  const saveSubtestOrder = useMutation({
+  const saveConfiguration = useMutation({
     mutationFn: async () => {
-      for (const [index, subtest] of subtestsDraft.entries()) {
-        await instrumentService.updateSubtest(subtest.id, {
+      const payloadSubtests = subtestsDraft.map((subtest, index) => {
+        const isCreated = subtest.status === "CREATED";
+        const isDeleted = subtest.status === "DELETED";
+        
+        // Map items
+        const payloadItems = (subtest.items || []).map((item, itemIdx) => {
+          return {
+            id: item.id || null,
+            draftId: item.draftId,
+            sourceId: item.sourceId || null,
+            status: item.status,
+            code: item.code,
+            itemType: item.itemType,
+            responseType: item.responseType,
+            prompt: item.prompt,
+            instruction: item.instruction,
+            order: item.order || itemIdx + 1,
+            baseScore: numberOrUndefined(item.baseScore),
+            timeLimitSeconds: numberOrUndefined(item.timeLimitSeconds),
+            required: item.required,
+            confidential: item.confidential,
+            images: (item.images || []).map((img: any) => ({
+              id: img.id || null,
+              draftId: img.draftId,
+              sourceId: img.sourceId || null,
+              status: img.status,
+              resourceId: img.resourceId,
+              order: img.order,
+              altText: img.altText,
+              role: img.role,
+            })),
+            options: (item.options || []).map((opt: any) => ({
+              id: opt.id || null,
+              draftId: opt.draftId,
+              sourceId: opt.sourceId || null,
+              status: opt.status,
+              code: opt.code,
+              text: opt.text,
+              order: opt.order,
+              ordinalValue: opt.ordinalValue,
+              images: (opt.images || []).map((img: any) => ({
+                id: img.id || null,
+                draftId: img.draftId,
+                sourceId: img.sourceId || null,
+                status: img.status,
+                resourceId: img.resourceId,
+                order: img.order,
+                altText: img.altText,
+                role: img.role,
+              })),
+            })),
+          };
+        });
+
+        return {
+          id: subtest.id || null,
+          draftId: subtest.draftId || String(subtest.id),
+          sourceId: subtest.sourceId || null,
+          status: isDeleted ? "DELETED" : (subtest.status === "CREATED" ? "CREATED" : "UPDATED"),
           code: subtest.codigoSubtest,
           name: subtest.nombreSubtest,
           description: subtest.descripcion,
@@ -633,17 +740,139 @@ export function InstrumentVersionEditorScreen({ testId }: { testId: string }) {
           randomizeItems: canRandomizeSubtestContent ? !!subtest.permiteAleatorizarItems : false,
           randomizeOptions: canRandomizeSubtestContent ? !!subtest.permiteAleatorizarOpciones : false,
           required: subtest.esObligatorio ?? true,
-          strategyId: simpleStrategyId,
-        });
-      }
+          strategyId: subtest.estrategiaCalificacionId || simpleStrategyId,
+          items: payloadItems,
+        };
+      });
+
+      await instrumentService.saveVersionConfiguration(version!.id, {
+        subtests: payloadSubtests,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["instrument-subtests", version?.id] });
       queryClient.invalidateQueries({ queryKey: ["instrument-publication-subtests", version?.id] });
       setSubtestOrderDirty(false);
-      setNotice("Orden de subtests guardado.");
+      setNotice("Configuración de subtests guardada exitosamente.");
     },
   });
+
+  const handleImportSubtest = async (sourceSubtestId: number) => {
+    setImportingSubtest(true);
+    try {
+      const template = await instrumentService.getSubtestCloneTemplate(sourceSubtestId);
+      
+      const newDraft: SubtestDraftState = {
+        id: undefined as any,
+        draftId: `subtest-tmp-${Date.now()}`,
+        sourceId: template.sourceSubtestId,
+        status: "CREATED",
+        codigoSubtest: `${template.code}-COPY`,
+        nombreSubtest: `${template.name} Copia`,
+        descripcion: template.description || "",
+        instrucciones: template.instructions || "",
+        numeroOrden: subtestsDraft.filter(s => s.status !== "DELETED").length + 1,
+        tiempoLimiteSegundos: template.timeLimitSeconds,
+        permiteAleatorizarItems: template.randomizeItems,
+        permiteAleatorizarOpciones: template.randomizeOptions,
+        esObligatorio: template.required,
+        estado: template.estado || "ACTIVO",
+        items: (template.items || []).map((item: any, itemIdx: number) => {
+          return {
+            id: undefined,
+            draftId: `item-tmp-${Date.now()}-${itemIdx}`,
+            sourceId: item.sourceItemId,
+            status: "CREATED",
+            code: item.code,
+            itemType: item.itemType,
+            responseType: item.responseType,
+            prompt: item.prompt || "",
+            instruction: item.instruction || "",
+            order: item.order || itemIdx + 1,
+            baseScore: item.baseScore !== undefined ? String(item.baseScore) : "1",
+            timeLimitSeconds: item.timeLimitSeconds !== undefined && item.timeLimitSeconds !== null ? String(item.timeLimitSeconds) : "",
+            required: item.required !== undefined ? item.required : true,
+            confidential: item.confidential !== undefined ? item.confidential : true,
+            images: (item.images || []).map((img: any, imgIdx: number) => ({
+              id: undefined,
+              draftId: `img-tmp-${Date.now()}-${itemIdx}-${imgIdx}`,
+              sourceId: img.sourceImageId,
+              status: "CREATED",
+              resourceId: img.resourceId,
+              order: img.order || 1,
+              altText: img.altText || "",
+              role: img.role || "ENUNCIADO",
+            })),
+            options: (item.options || []).map((opt: any, optIdx: number) => {
+              const optImages = (opt.images || []).map((img: any, imgIdx: number) => ({
+                id: undefined,
+                draftId: `optimg-tmp-${Date.now()}-${itemIdx}-${optIdx}-${imgIdx}`,
+                sourceId: img.sourceImageId,
+                status: "CREATED",
+                resourceId: img.resourceId,
+                order: img.order || 1,
+                altText: img.altText || "",
+                role: img.role || "ENUNCIADO",
+              }));
+              return {
+                id: undefined,
+                draftId: `opt-tmp-${Date.now()}-${itemIdx}-${optIdx}`,
+                sourceId: opt.sourceOptionId,
+                status: "CREATED",
+                code: opt.code,
+                text: opt.text || "",
+                order: opt.order || optIdx + 1,
+                ordinalValue: opt.ordinalValue,
+                isCorrect: item.answerKey?.correctOptionSourceId === opt.sourceOptionId,
+                images: optImages,
+                image: { file: null, altText: "" }
+              };
+            }),
+            scoring: {
+              useCustomRule: !!item.answerKey,
+              requiresManualReview: item.answerKey?.requiresManualReview || false,
+              score: item.answerKey?.score !== undefined ? String(item.answerKey.score) : "1",
+            }
+          };
+        })
+      };
+
+      setSubtestsDraft((current) => [...current, newDraft]);
+      setSelectedSubtestId(newDraft.draftId!);
+      setSubtestOrderDirty(true);
+      setIsReuseDialogOpen(false);
+      setNotice("Plantilla de subtest cargada localmente. Guarde la configuración para persistir.");
+    } catch (error) {
+      console.error(error);
+      setNotice(`Error al cargar plantilla: ${errorMessage(error)}`);
+    } finally {
+      setImportingSubtest(false);
+    }
+  };
+
+  const handleDeleteSubtest = (subtest: SubtestDraftState) => {
+    const updated = subtestsDraft.map((s) => {
+      if (subtest.status === "CREATED" && s.draftId === subtest.draftId) {
+        return null;
+      }
+      if (s.id === subtest.id) {
+        return { ...s, status: "DELETED" as const };
+      }
+      return s;
+    }).filter(Boolean) as SubtestDraftState[];
+
+    setSubtestsDraft(updated);
+    setSubtestOrderDirty(true);
+
+    const remaining = updated.filter((s) => s.status !== "DELETED");
+    setSelectedSubtestId((current) => {
+      const targetId = subtest.status === "CREATED" ? subtest.draftId : subtest.id;
+      if (current === targetId) {
+        return remaining.length ? (remaining[0].id || remaining[0].draftId || null) : null;
+      }
+      return current;
+    });
+  };
 
   const createSubtest = useMutation({
     mutationFn: (form: SubtestForm) => instrumentService.addSubtest(version!.id, {
@@ -724,8 +953,21 @@ export function InstrumentVersionEditorScreen({ testId }: { testId: string }) {
     },
   });
 
-  const moveSubtest = (from: number, to: number) => {
-    setSubtestsDraft((current) => reorder(current, from, to));
+  const moveSubtest = (fromVisibleIndex: number, toVisibleIndex: number) => {
+    const visible = subtestsDraft.filter((s) => s.status !== "DELETED");
+    const fromSubtest = visible[fromVisibleIndex];
+    const toSubtest = visible[toVisibleIndex];
+    if (!fromSubtest || !toSubtest) return;
+
+    const fromIndex = subtestsDraft.indexOf(fromSubtest);
+    const toIndex = subtestsDraft.indexOf(toSubtest);
+
+    setSubtestsDraft((current) => {
+      const next = [...current];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return next;
+    });
     setSubtestOrderDirty(true);
   };
 
@@ -764,6 +1006,27 @@ export function InstrumentVersionEditorScreen({ testId }: { testId: string }) {
           </Alert>
         )}
 
+        {!isDraftVersion && (
+          <Alert className="border-amber-200 bg-amber-50 text-amber-950">
+            <LockKeyhole className="h-4 w-4 text-amber-600 animate-pulse" />
+            <AlertTitle className="font-semibold text-amber-800">Versión Publicada (Solo Lectura)</AlertTitle>
+            <AlertDescription className="mt-1.5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <span>
+                Esta versión ya está publicada y sus campos están bloqueados. Para realizar modificaciones, debe crear una nueva versión de este test.
+              </span>
+              <Button
+                size="sm"
+                type="button"
+                className="bg-amber-600 hover:bg-amber-700 text-white shrink-0 self-start sm:self-center"
+                onClick={() => setIsCreateVersionDialogOpen(true)}
+              >
+                <Plus className="mr-1.5 h-4 w-4" />
+                Crear nueva versión
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {(saveBaremo.isError || publishVersion.isError) && (
           <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
             <AlertTriangle className="h-4 w-4" />
@@ -788,19 +1051,13 @@ export function InstrumentVersionEditorScreen({ testId }: { testId: string }) {
                 <Input value={test.nombreTest} disabled />
               </Field>
             </div>
-            <div className="grid gap-3 md:grid-cols-3">
+            <div className="grid gap-3 md:grid-cols-2">
               <Field label="Version">
                 <Input value={header.number} onChange={(event) => setHeader({ ...header, number: event.target.value })} disabled={!isDraftVersion} />
               </Field>
               <Field label="Tiempo limite global (seg)">
                 <Input type="number" value={header.timeLimitSeconds} onChange={(event) => setHeader({ ...header, timeLimitSeconds: event.target.value })} disabled={!isDraftVersion} />
               </Field>
-              <div className="flex items-end">
-                <Button className="w-full" onClick={() => updateVersion.mutate()} disabled={!isDraftVersion || updateVersion.isPending || !header.number.trim()}>
-                  <Save className="mr-2 h-4 w-4" />
-                  Guardar cabecera
-                </Button>
-              </div>
             </div>
             <Field label="Instrucciones generales">
               <Textarea rows={3} value={header.instructions} onChange={(event) => setHeader({ ...header, instructions: event.target.value })} disabled={!isDraftVersion} />
@@ -819,107 +1076,190 @@ export function InstrumentVersionEditorScreen({ testId }: { testId: string }) {
                 onChange={(randomizeItems) => setHeader({ ...header, randomizeItems })}
               />
             </div>
+            <div className="flex items-end">
+                <Button className="w-full" onClick={() => updateVersion.mutate()} disabled={!isDraftVersion || updateVersion.isPending || !header.number.trim()}>
+                  <Save className="mr-2 h-4 w-4" />
+                  Guardar cabecera
+                </Button>
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="flex flex-row items-start justify-between gap-3">
-            <div>
-              <CardTitle>Subtests</CardTitle>
-              <CardDescription>El orden se define por la posicion de la tabla.</CardDescription>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" disabled={!subtestOrderDirty || saveSubtestOrder.isPending || !isDraftVersion} onClick={() => saveSubtestOrder.mutate()}>
-                <Save className="mr-2 h-4 w-4" />
-                Guardar orden
-              </Button>
-              <Dialog open={isSubtestDialogOpen} onOpenChange={setIsSubtestDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button disabled={!isDraftVersion}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Nuevo subtest
+        <Tabs defaultValue="subtests" className="w-full">
+          <TabsList className="grid w-full max-w-[400px] grid-cols-2">
+            <TabsTrigger value="subtests">Configuración de subtests</TabsTrigger>
+            <TabsTrigger value="baremos">Baremos</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="subtests" className="space-y-4 pt-4">
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="flex flex-row items-start justify-between gap-3">
+                <div>
+                  <CardTitle>Subtests</CardTitle>
+                  <CardDescription>El orden se define por la posicion de la tabla.</CardDescription>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" disabled={!subtestOrderDirty || saveConfiguration.isPending || !isDraftVersion} onClick={() => saveConfiguration.mutate()}>
+                    <Save className="mr-2 h-4 w-4" />
+                    {saveConfiguration.isPending ? "Guardando..." : "Guardar configuración"}
                   </Button>
-                </DialogTrigger>
+                  <Dialog open={isSubtestDialogOpen} onOpenChange={setIsSubtestDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button disabled={!isDraftVersion}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Nuevo subtest
+                      </Button>
+                    </DialogTrigger>
+                    <SubtestDialog
+                      canRandomize={canRandomizeSubtestContent}
+                      onCancel={() => setIsSubtestDialogOpen(false)}
+                      onSubmit={(form) => createSubtest.mutate(form)}
+                      saving={createSubtest.isPending}
+                    />
+                  </Dialog>
+                  <Dialog open={isReuseDialogOpen} onOpenChange={setIsReuseDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button disabled={!isDraftVersion} variant="outline">
+                        <ChevronsUpDown className="mr-2 h-4 w-4" />
+                        Reutilizar subtest
+                      </Button>
+                    </DialogTrigger>
+                    <ReuseSubtestDialog
+                      canRandomize={canRandomizeSubtestContent}
+                      onCancel={() => setIsReuseDialogOpen(false)}
+                      onImport={handleImportSubtest}
+                      saving={importingSubtest}
+                    />
+                  </Dialog>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-10" />
+                      <TableHead>Posicion</TableHead>
+                      <TableHead>Codigo</TableHead>
+                      <TableHead>Nombre</TableHead>
+                      <TableHead>Tiempo</TableHead>
+                      <TableHead>Aleatorizacion</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead className="text-right">Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {subtestsDraft.filter(s => s.status !== "DELETED").length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
+                          Agregue el primer subtest para empezar a configurar items.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      subtestsDraft
+                        .filter(s => s.status !== "DELETED")
+                        .map((subtest, index) => (
+                          <DraggableSubtestRow
+                            key={subtest.id || subtest.draftId}
+                            index={index}
+                            subtest={subtest}
+                            selected={selectedSubtestId === subtest.id || selectedSubtestId === subtest.draftId}
+                            canMove={isDraftVersion}
+                            onMove={moveSubtest}
+                            onSelect={() => setSelectedSubtestId(subtest.id || subtest.draftId || null)}
+                            canRandomize={canRandomizeSubtestContent}
+                            onEdit={() => setEditingSubtest(subtest)}
+                            onDelete={() => handleDeleteSubtest(subtest)}
+                          />
+                        ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            {editingSubtest && (
+              <Dialog open={!!editingSubtest} onOpenChange={(open) => { if (!open) setEditingSubtest(null); }}>
                 <SubtestDialog
                   canRandomize={canRandomizeSubtestContent}
-                  onCancel={() => setIsSubtestDialogOpen(false)}
-                  onSubmit={(form) => createSubtest.mutate(form)}
-                  saving={createSubtest.isPending}
+                  initialValues={{
+                    code: editingSubtest.codigoSubtest,
+                    name: editingSubtest.nombreSubtest,
+                    description: editingSubtest.descripcion ?? "",
+                    instructions: editingSubtest.instrucciones ?? "",
+                    timeLimitSeconds: editingSubtest.tiempoLimiteSegundos ? String(editingSubtest.tiempoLimiteSegundos) : "",
+                    required: editingSubtest.esObligatorio ?? true,
+                    randomizeItems: editingSubtest.permiteAleatorizarItems ?? false,
+                    randomizeOptions: editingSubtest.permiteAleatorizarOpciones ?? false,
+                  }}
+                  onCancel={() => setEditingSubtest(null)}
+                  onSubmit={(form) => {
+                    setSubtestsDraft((current) =>
+                      current.map((s) => {
+                        if (
+                          (editingSubtest.id && s.id === editingSubtest.id) ||
+                          (editingSubtest.draftId && s.draftId === editingSubtest.draftId)
+                        ) {
+                          return {
+                            ...s,
+                            codigoSubtest: form.code.trim(),
+                            nombreSubtest: form.name.trim(),
+                            descripcion: form.description,
+                            instrucciones: form.instructions,
+                            tiempoLimiteSegundos: numberOrUndefined(form.timeLimitSeconds),
+                            permiteAleatorizarItems: form.randomizeItems,
+                            permiteAleatorizarOpciones: form.randomizeOptions,
+                            esObligatorio: form.required,
+                            status: s.status === "CREATED" ? "CREATED" : "UPDATED",
+                          };
+                        }
+                        return s;
+                      })
+                    );
+                    setSubtestOrderDirty(true);
+                    setEditingSubtest(null);
+                  }}
+                  saving={false}
                 />
               </Dialog>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-10" />
-                  <TableHead>Posicion</TableHead>
-                  <TableHead>Codigo</TableHead>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Tiempo</TableHead>
-                  <TableHead>Aleatorizacion</TableHead>
-                  <TableHead>Estado</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {subtestsDraft.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
-                      Agregue el primer subtest para empezar a configurar items.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  subtestsDraft.map((subtest, index) => (
-                    <DraggableSubtestRow
-                      key={subtest.id}
-                      index={index}
-                      subtest={subtest}
-                      selected={selectedSubtestId === subtest.id}
-                      canMove={isDraftVersion}
-                      onMove={moveSubtest}
-                      onSelect={() => setSelectedSubtestId(subtest.id)}
-                      canRandomize={canRandomizeSubtestContent}
-                    />
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+            )}
 
-        <ItemDraftEditor
-          key={selectedSubtestId ?? "none"}
-          subtest={selectedSubtest}
-          isDraftVersion={isDraftVersion}
-          strategies={strategiesQuery.data ?? []}
-          simpleStrategyId={simpleStrategyId}
-          onNotice={setNotice}
-          onDirtyChange={setItemDraftDirty}
-          onSaved={() => {
-            queryClient.invalidateQueries({ queryKey: ["instrument-publication-subtests", version.id] });
-            setItemDraftDirty(false);
-          }}
-        />
+            <ItemDraftEditor
+              key={selectedSubtestId ?? "none"}
+              subtest={selectedSubtest}
+              isDraftVersion={isDraftVersion}
+              strategies={strategiesQuery.data ?? []}
+              simpleStrategyId={simpleStrategyId}
+              onNotice={setNotice}
+              onDirtyChange={setItemDraftDirty}
+              onSaved={() => {
+                queryClient.invalidateQueries({ queryKey: ["instrument-publication-subtests", version.id] });
+                setItemDraftDirty(false);
+              }}
+            />
+          </TabsContent>
 
-        <BaremoEditor
-          baremos={baremosQuery.data ?? []}
-          activeBaremo={activeBaremo}
-          form={baremoForm}
-          ranges={baremoRangesDraft}
-          disabled={!isDraftVersion}
-          saving={saveBaremo.isPending}
-          loading={baremosQuery.isLoading || baremoRangesQuery.isLoading}
-          onFormChange={(next) => {
-            setBaremoForm(next);
-            setBaremoDirty(true);
-          }}
-          onRangesChange={(next) => {
-            setBaremoRangesDraft(next);
-            setBaremoDirty(true);
-          }}
-          onSave={() => saveBaremo.mutate()}
-        />
+          <TabsContent value="baremos" className="space-y-4 pt-4">
+            <BaremoEditor
+              baremos={baremosQuery.data ?? []}
+              activeBaremo={activeBaremo}
+              form={baremoForm}
+              ranges={baremoRangesDraft}
+              disabled={!isDraftVersion}
+              saving={saveBaremo.isPending}
+              loading={baremosQuery.isLoading || baremoRangesQuery.isLoading}
+              onFormChange={(next) => {
+                setBaremoForm(next);
+                setBaremoDirty(true);
+              }}
+              onRangesChange={(next) => {
+                setBaremoRangesDraft(next);
+                setBaremoDirty(true);
+              }}
+              onSave={() => saveBaremo.mutate()}
+            />
+          </TabsContent>
+        </Tabs>
+
 
         <PublicationReview
           checklist={checklist}
@@ -929,6 +1269,22 @@ export function InstrumentVersionEditorScreen({ testId }: { testId: string }) {
           disabled={!isDraftVersion || !checklist.ready || publishVersion.isPending}
           onPublish={() => publishVersion.mutate()}
         />
+
+        {isCreateVersionDialogOpen && (
+          <CreateVersionDialog
+            open={isCreateVersionDialogOpen}
+            onOpenChange={setIsCreateVersionDialogOpen}
+            test={{
+              ...test,
+              latestVersion: version,
+            }}
+            onCreated={(newVersion) => {
+              setIsCreateVersionDialogOpen(false);
+              setNotice(`Nueva versión ${newVersion.numeroVersion} creada como borrador.`);
+              queryClient.invalidateQueries({ queryKey: ["instrument-version-context", testId] });
+            }}
+          />
+        )}
       </div>
     </DndProvider>
   );
@@ -943,7 +1299,7 @@ function ItemDraftEditor({
   onDirtyChange,
   onSaved,
 }: {
-  subtest: SubtestDTO | null;
+  subtest: SubtestDraftState | null;
   isDraftVersion: boolean;
   strategies: EstrategiaCalificacionDTO[];
   simpleStrategyId?: number;
@@ -958,7 +1314,7 @@ function ItemDraftEditor({
   const draftQuery = useQuery({
     queryKey: ["instrument-item-draft", subtest?.id],
     queryFn: () => loadItemDraft(subtest!.id),
-    enabled: !!subtest,
+    enabled: !!subtest && !!subtest.id,
   });
 
   const selectedItem = items.find((item) => item.key === selectedItemKey) ?? null;
@@ -999,6 +1355,21 @@ function ItemDraftEditor({
       <Card className="border-0 shadow-sm">
         <CardContent className="py-10 text-center text-muted-foreground">
           Seleccione o cree un subtest para configurar sus items.
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (subtest.status === "CREATED") {
+    return (
+      <Card className="border-0 shadow-sm">
+        <CardContent className="py-10 text-center text-muted-foreground flex flex-col items-center justify-center gap-3">
+          <AlertTriangle className="h-8 w-8 text-amber-500" />
+          <div className="font-semibold text-base">Subtest pendiente de guardar</div>
+          <p className="text-sm max-w-md text-center text-muted-foreground">
+            Este subtest ha sido importado pero aún no se ha guardado en el servidor.
+            Por favor, haga clic en el botón <strong>"Guardar configuración"</strong> arriba para persistir los cambios antes de editar sus ítems.
+          </p>
         </CardContent>
       </Card>
     );
@@ -1532,11 +1903,11 @@ function PublicationReview({
         ) : (
           <div className="grid gap-2 md:grid-cols-2">
             {checklist.items.map((item) => (
-              <div key={item.id} className={`flex items-start gap-3 rounded-md border p-3 ${item.complete ? "bg-emerald-50/60" : "bg-amber-50/70"}`}>
+              <div key={item.id} className={`flex items-start gap-3 rounded-md border p-3 ${item.complete ? "bg-emerald-100" : "bg-red-100"}`}>
                 {item.complete ? (
                   <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
                 ) : (
-                  <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+                  <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-700" />
                 )}
                 <div className="min-w-0">
                   <div className="text-sm font-medium">{item.label}</div>
@@ -1559,14 +1930,18 @@ function DraggableSubtestRow({
   canRandomize,
   onMove,
   onSelect,
+  onEdit,
+  onDelete,
 }: {
-  subtest: SubtestDTO;
+  subtest: SubtestDraftState;
   index: number;
   selected: boolean;
   canMove: boolean;
   canRandomize: boolean;
   onMove: (from: number, to: number) => void;
   onSelect: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
 }) {
   const ref = useRef<HTMLTableRowElement>(null);
   const [, drop] = useDrop<{ index: number }>({
@@ -1591,7 +1966,16 @@ function DraggableSubtestRow({
       <TableCell><GripVertical className="h-4 w-4 text-muted-foreground" /></TableCell>
       <TableCell>{index + 1}</TableCell>
       <TableCell className="font-mono text-xs">{subtest.codigoSubtest}</TableCell>
-      <TableCell className="font-medium">{subtest.nombreSubtest}</TableCell>
+      <TableCell className="font-medium">
+        <div className="flex items-center gap-2">
+          {subtest.nombreSubtest}
+          {subtest.status === "CREATED" && (
+            <Badge variant="outline" className="border-amber-500 bg-amber-50 text-amber-700 text-[10px] px-1.5 py-0">
+              Borrador
+            </Badge>
+          )}
+        </div>
+      </TableCell>
       <TableCell>{subtest.tiempoLimiteSegundos ? `${subtest.tiempoLimiteSegundos}s` : "Sin limite"}</TableCell>
       <TableCell>
         {canRandomize ? (
@@ -1603,6 +1987,31 @@ function DraggableSubtestRow({
         )}
       </TableCell>
       <TableCell><Badge variant="secondary">{subtest.estado ?? "ACTIVO"}</Badge></TableCell>
+      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+        <div className="flex justify-end gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            disabled={!canMove}
+            onClick={onEdit}
+            title="Editar subtest"
+          >
+            <Settings2 className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            disabled={!canMove}
+            onClick={onDelete}
+            title="Eliminar subtest"
+            className="text-destructive hover:bg-destructive/10"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </TableCell>
     </TableRow>
   );
 }
@@ -1954,13 +2363,21 @@ async function persistItemDraft({
       required: draft.required,
       confidential: draft.confidential,
     };
+    const hasImage = hasPendingImageUpload(draft.image);
     const savedItem = draft.id
       ? await instrumentService.updateItem(draft.id, itemPayload)
-      : await instrumentService.addItem(subtestId, itemPayload);
+      : await instrumentService.addItemWithImage(
+          subtestId,
+          itemPayload,
+          hasImage ? (draft.image.file as File) : undefined,
+          hasImage ? 1 : undefined,
+          hasImage ? (blank(draft.image.altText) ?? `Imagen del item ${itemPayload.code}`) : undefined,
+          "ENUNCIADO",
+        );
 
-    if (hasPendingImageUpload(draft.image)) {
+    if (draft.id && hasImage) {
       await instrumentService.uploadImage(
-        draft.image.file,
+        draft.image.file as File,
         savedItem.id,
         1,
         blank(draft.image.altText) ?? `Imagen del item ${itemPayload.code}`,
@@ -2224,4 +2641,433 @@ function errorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
   return "Revise la conexion con el backend e intente nuevamente.";
+}
+
+function ReuseSubtestDialog({
+  canRandomize,
+  onCancel,
+  onImport,
+  saving,
+}: {
+  canRandomize: boolean;
+  onCancel: () => void;
+  onImport: (subtestId: number) => void;
+  saving: boolean;
+}) {
+  const [selectedTestId, setSelectedTestId] = useState<number | null>(null);
+  const [selectedVersionId, setSelectedVersionId] = useState<number | null>(null);
+  const [selectedSubtestId, setSelectedSubtestId] = useState<number | null>(null);
+
+  const testsQuery = useQuery({
+    queryKey: ["instrument-tests-all"],
+    queryFn: instrumentService.getTests,
+  });
+
+  const versionsQuery = useQuery({
+    queryKey: ["instrument-versions-all", selectedTestId],
+    queryFn: () => instrumentService.getVersions(selectedTestId!),
+    enabled: selectedTestId !== null,
+  });
+
+  const subtestsQuery = useQuery({
+    queryKey: ["instrument-subtests-all", selectedVersionId],
+    queryFn: () => instrumentService.getSubtests(selectedVersionId!),
+    enabled: selectedVersionId !== null,
+  });
+
+  const handleTestChange = (testIdStr: string) => {
+    const testId = Number(testIdStr);
+    setSelectedTestId(testId);
+    setSelectedVersionId(null);
+    setSelectedSubtestId(null);
+  };
+
+  const handleVersionChange = (versionIdStr: string) => {
+    const versionId = Number(versionIdStr);
+    setSelectedVersionId(versionId);
+    setSelectedSubtestId(null);
+  };
+
+  const handleSubtestChange = (subtestIdStr: string) => {
+    const subtestId = Number(subtestIdStr);
+    setSelectedSubtestId(subtestId);
+  };
+
+  return (
+    <DialogContent className="sm:max-w-md">
+      <DialogHeader>
+        <DialogTitle>Reutilizar subtest</DialogTitle>
+        <DialogDescription>
+          Seleccione un test y versión de origen para importar una copia de un subtest existente.
+        </DialogDescription>
+      </DialogHeader>
+      <div className="grid gap-4 py-4">
+        <div className="space-y-1.5">
+          <Label>Test de origen</Label>
+          {testsQuery.isLoading ? (
+            <div className="text-sm text-muted-foreground py-2">Cargando tests...</div>
+          ) : (
+            <Select value={selectedTestId ? String(selectedTestId) : ""} onValueChange={handleTestChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccione un test" />
+              </SelectTrigger>
+              <SelectContent>
+                {(testsQuery.data ?? []).map((t) => (
+                  <SelectItem key={t.id} value={String(t.id)}>
+                    {t.codigoTest} - {t.nombreTest}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+
+        {selectedTestId !== null && (
+          <div className="space-y-1.5">
+            <Label>Versión</Label>
+            {versionsQuery.isLoading ? (
+              <div className="text-sm text-muted-foreground py-2">Cargando versiones...</div>
+            ) : (
+              <Select value={selectedVersionId ? String(selectedVersionId) : ""} onValueChange={handleVersionChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccione una versión" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(versionsQuery.data ?? []).map((v) => (
+                    <SelectItem key={v.id} value={String(v.id)}>
+                      Versión {v.numeroVersion} ({v.estado})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+        )}
+
+        {selectedVersionId !== null && (
+          <div className="space-y-1.5">
+            <Label>Subtest</Label>
+            {subtestsQuery.isLoading ? (
+              <div className="text-sm text-muted-foreground py-2">Cargando subtests...</div>
+            ) : (
+              <Select value={selectedSubtestId ? String(selectedSubtestId) : ""} onValueChange={handleSubtestChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccione un subtest" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(subtestsQuery.data ?? []).map((s) => (
+                    <SelectItem key={s.id} value={String(s.id)}>
+                      {s.codigoSubtest} - {s.nombreSubtest}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+        )}
+      </div>
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel} disabled={saving}>
+          Cancelar
+        </Button>
+        <Button
+          type="button"
+          disabled={!selectedSubtestId || saving}
+          onClick={() => {
+            if (selectedSubtestId) {
+              onImport(selectedSubtestId);
+            }
+          }}
+        >
+          {saving ? "Importando..." : "Importar"}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  );
+}
+
+interface CreateVersionDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  test: TestPsicologicoDTO & { latestVersion?: InstrumentVersionDTO };
+  onCreated: (newVersion: InstrumentVersionDTO) => void;
+}
+
+export function CreateVersionDialog({
+  open,
+  onOpenChange,
+  test,
+  onCreated,
+}: CreateVersionDialogProps) {
+  const queryClient = useQueryClient();
+  const [versionNumber, setVersionNumber] = useState("");
+  const [copyConfig, setCopyConfig] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const strategiesQuery = useQuery({
+    queryKey: ["scoring-strategies"],
+    queryFn: instrumentService.getStrategies,
+  });
+  const strategies = strategiesQuery.data ?? [];
+  const simpleStrategyId = findSimpleStrategyId(strategies);
+
+  const createMutation = useMutation({
+    mutationFn: async () => {
+      setError(null);
+      const sourceVersion = test.latestVersion;
+      
+      // 1. Create the new version
+      const newVersion = await instrumentService.createVersion(test.id, {
+        number: versionNumber.trim(),
+        strategyId: sourceVersion?.estrategiaCalificacionId || simpleStrategyId || 1,
+        instructions: sourceVersion?.instruccionesGenerales || "",
+        timeLimitSeconds: sourceVersion?.tiempoLimiteSegundos,
+        randomizeItems: sourceVersion?.permiteAleatorizarItems || false,
+        randomizeSubtests: sourceVersion?.permiteAleatorizarSubtests || false,
+      });
+
+      // 2. Clone configuration if copyConfig is true
+      if (copyConfig && sourceVersion) {
+        // Fetch source subtests
+        const sourceSubtests = await instrumentService.getSubtests(sourceVersion.id);
+
+        const templates = await Promise.all(
+          sourceSubtests.map(s => instrumentService.getSubtestCloneTemplate(s.id))
+        );
+
+        const payloadSubtests = templates.map((template, subtestIdx) => {
+          const payloadItems = (template.items || []).map((item: any, itemIdx: number) => {
+            const optImages = (item.options || []).map((opt: any, optIdx: number) => {
+              const imgList = (opt.images || []).map((img: any, imgIdx: number) => ({
+                id: null,
+                draftId: `optimg-tmp-${Date.now()}-${subtestIdx}-${itemIdx}-${optIdx}-${imgIdx}`,
+                sourceId: img.sourceImageId,
+                status: "CREATED" as const,
+                resourceId: img.resourceId,
+                order: img.order || 1,
+                altText: img.altText || "",
+                role: img.role || "ENUNCIADO",
+              }));
+              return {
+                id: null,
+                draftId: `opt-tmp-${Date.now()}-${subtestIdx}-${itemIdx}-${optIdx}`,
+                sourceId: opt.sourceOptionId,
+                status: "CREATED" as const,
+                code: opt.code,
+                text: opt.text || "",
+                order: opt.order || optIdx + 1,
+                ordinalValue: opt.ordinalValue,
+                images: imgList,
+              };
+            });
+
+            const itemImgList = (item.images || []).map((img: any, imgIdx: number) => ({
+              id: null,
+              draftId: `img-tmp-${Date.now()}-${subtestIdx}-${itemIdx}-${imgIdx}`,
+              sourceId: img.sourceImageId,
+              status: "CREATED" as const,
+              resourceId: img.resourceId,
+              order: img.order || 1,
+              altText: img.altText || "",
+              role: img.role || "ENUNCIADO",
+            }));
+
+            return {
+              id: null,
+              draftId: `item-tmp-${Date.now()}-${subtestIdx}-${itemIdx}`,
+              sourceId: item.sourceItemId,
+              status: "CREATED" as const,
+              code: item.code,
+              itemType: item.itemType,
+              responseType: item.responseType,
+              prompt: item.prompt || "",
+              instruction: item.instruction || "",
+              order: item.order || itemIdx + 1,
+              baseScore: item.baseScore !== undefined ? String(item.baseScore) : "1",
+              timeLimitSeconds: item.timeLimitSeconds !== undefined && item.timeLimitSeconds !== null ? String(item.timeLimitSeconds) : "",
+              required: item.required !== undefined ? item.required : true,
+              confidential: item.confidential !== undefined ? item.confidential : true,
+              images: itemImgList,
+              options: optImages.map((opt: any) => ({
+                id: opt.id,
+                draftId: opt.draftId,
+                sourceId: opt.sourceId,
+                status: opt.status,
+                code: opt.code,
+                text: opt.text,
+                order: opt.order,
+                ordinalValue: opt.ordinalValue,
+                images: opt.images,
+              })),
+              answerKey: null, // do not send answerKey here to avoid ruleId errors
+            };
+          });
+
+          return {
+            id: null,
+            draftId: `subtest-tmp-${Date.now()}-${subtestIdx}`,
+            sourceId: template.sourceSubtestId,
+            status: "CREATED" as const,
+            code: template.code,
+            name: template.name,
+            description: template.description || "",
+            instructions: template.instructions || "",
+            order: template.order || subtestIdx + 1,
+            timeLimitSeconds: template.timeLimitSeconds,
+            randomizeItems: !!template.randomizeItems,
+            randomizeOptions: !!template.randomizeOptions,
+            required: template.required !== false,
+            strategyId: template.strategyId || sourceVersion?.estrategiaCalificacionId || simpleStrategyId || 1,
+            items: payloadItems,
+          };
+        });
+
+        // Save cloned subtests
+        await instrumentService.saveVersionConfiguration(newVersion.id, {
+          subtests: payloadSubtests,
+        });
+
+        // Recreate answer keys & rules
+        const createdSubtests = await instrumentService.getSubtests(newVersion.id);
+        for (const newSubtest of createdSubtests) {
+          const createdItems = await instrumentService.getItems(newSubtest.id);
+          
+          const templateSubtest = templates.find(t => t.code === newSubtest.codigoSubtest);
+          if (!templateSubtest) continue;
+
+          for (const newItem of createdItems) {
+            const templateItem = templateSubtest.items?.find((i: any) => i.code === newItem.codigoItem);
+            if (!templateItem || !templateItem.answerKey) continue;
+
+            const createdOptions = await instrumentService.getOptions(newItem.id);
+
+            // Create scoring rule for this subtest/item
+            const newRule = await instrumentService.createScoringRule(newSubtest.id, {
+              strategyId: templateSubtest.strategyId || sourceVersion?.estrategiaCalificacionId || simpleStrategyId || 1,
+              ruleType: "CLAVE_ITEM",
+              priority: 1,
+              parametersJson: "{}",
+              observation: "Regla base para calificacion automatica.",
+            });
+
+            // Find matching correct option
+            const correctTemplateOption = templateItem.options?.find((o: any) => o.sourceOptionId === templateItem.answerKey.correctOptionSourceId);
+            const correctOption = createdOptions.find((o: any) => o.codigoOpcion === correctTemplateOption?.code);
+
+            // Create answer key
+            await instrumentService.createAnswerKey(newItem.id, {
+              ruleId: newRule.id,
+              correctOptionId: correctOption?.id || null,
+              expectedText: templateItem.answerKey.expectedText || null,
+              expectedNumber: templateItem.answerKey.expectedNumber !== undefined ? templateItem.answerKey.expectedNumber : null,
+              numericTolerance: templateItem.answerKey.numericTolerance !== undefined ? templateItem.answerKey.numericTolerance : null,
+              score: templateItem.answerKey.score !== undefined ? templateItem.answerKey.score : 1,
+              requiresManualReview: templateItem.answerKey.requiresManualReview || false,
+            });
+          }
+        }
+
+        // Copy Baremos
+        const sourceBaremos = await instrumentService.getBaremos(sourceVersion.id).catch(() => []);
+        for (const baremo of sourceBaremos) {
+          const newBaremo = await instrumentService.createBaremo({
+            versionId: newVersion.id,
+            dimensionId: baremo.dimensionResultadoId,
+            code: baremo.codigoBaremo,
+            name: baremo.nombre,
+            description: baremo.descripcion,
+            normativeGroup: baremo.grupoNormativo,
+          });
+
+          // Copy ranges
+          const sourceRanges = await instrumentService.getBaremoRanges(baremo.id).catch(() => []);
+          for (const range of sourceRanges) {
+            await instrumentService.addBaremoRange(newBaremo.id, {
+              minScore: range.puntajeMinimo,
+              maxScore: range.puntajeMaximo,
+              percentile: range.percentil,
+              category: range.categoria,
+              interpretation: range.interpretacion,
+              recommendation: range.recomendacion,
+              order: range.orden,
+            });
+          }
+        }
+      }
+
+      return newVersion;
+    },
+    onSuccess: (newVersion) => {
+      queryClient.invalidateQueries({ queryKey: ["instrument-index"] });
+      onCreated(newVersion);
+    },
+    onError: (err) => {
+      setError(errorMessage(err));
+    },
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Crear nueva versión</DialogTitle>
+          <DialogDescription>
+            Cree una nueva versión borrador para el test <strong>{test.nombreTest}</strong>.
+          </DialogDescription>
+        </DialogHeader>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (versionNumber.trim()) {
+              createMutation.mutate();
+            }
+          }}
+          className="space-y-4"
+        >
+          {error && (
+            <Alert className="border-destructive/40 bg-destructive/10 text-destructive py-2 text-xs">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Error al crear versión</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          <Field label="Número de versión">
+            <Input
+              value={versionNumber}
+              onChange={(e) => setVersionNumber(e.target.value)}
+              placeholder="Ej: 2.0"
+              required
+              disabled={createMutation.isPending}
+            />
+          </Field>
+
+          {test.latestVersion && (
+            <CheckField
+              label={`Copiar configuración e ítems de la versión actual (${test.latestVersion.numeroVersion})`}
+              checked={copyConfig}
+              onChange={setCopyConfig}
+              disabled={createMutation.isPending}
+            />
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => onOpenChange(false)}
+              disabled={createMutation.isPending}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              disabled={createMutation.isPending || !versionNumber.trim()}
+            >
+              {createMutation.isPending ? "Creando..." : "Crear versión"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
 }

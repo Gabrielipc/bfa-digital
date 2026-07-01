@@ -33,6 +33,7 @@ import { Route as AppDashboardRouteImport } from './routes/app/dashboard'
 import { Route as AppCohortesRouteImport } from './routes/app/cohortes'
 import { Route as AppCarrerasRouteImport } from './routes/app/carreras'
 import { Route as AppCargaImagenesRouteImport } from './routes/app/carga-imagenes'
+import { Route as AppCalificacionesRouteImport } from './routes/app/calificaciones'
 import { Route as AppAuditoriaRouteImport } from './routes/app/auditoria'
 import { Route as EvaluacionTokenIndexRouteImport } from './routes/evaluacion/$token/index'
 import { Route as AppSesionesIndexRouteImport } from './routes/app/sesiones.index'
@@ -170,6 +171,11 @@ const AppCargaImagenesRoute = AppCargaImagenesRouteImport.update({
   path: '/carga-imagenes',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCalificacionesRoute = AppCalificacionesRouteImport.update({
+  id: '/calificaciones',
+  path: '/calificaciones',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAuditoriaRoute = AppAuditoriaRouteImport.update({
   id: '/auditoria',
   path: '/auditoria',
@@ -268,6 +274,7 @@ export interface FileRoutesByFullPath {
   '/no-autorizado': typeof NoAutorizadoRoute
   '/sesion-vencida': typeof SesionVencidaRoute
   '/app/auditoria': typeof AppAuditoriaRoute
+  '/app/calificaciones': typeof AppCalificacionesRoute
   '/app/carga-imagenes': typeof AppCargaImagenesRoute
   '/app/carreras': typeof AppCarrerasRoute
   '/app/cohortes': typeof AppCohortesRoute
@@ -310,6 +317,7 @@ export interface FileRoutesByTo {
   '/no-autorizado': typeof NoAutorizadoRoute
   '/sesion-vencida': typeof SesionVencidaRoute
   '/app/auditoria': typeof AppAuditoriaRoute
+  '/app/calificaciones': typeof AppCalificacionesRoute
   '/app/carga-imagenes': typeof AppCargaImagenesRoute
   '/app/carreras': typeof AppCarrerasRoute
   '/app/cohortes': typeof AppCohortesRoute
@@ -351,6 +359,7 @@ export interface FileRoutesById {
   '/no-autorizado': typeof NoAutorizadoRoute
   '/sesion-vencida': typeof SesionVencidaRoute
   '/app/auditoria': typeof AppAuditoriaRoute
+  '/app/calificaciones': typeof AppCalificacionesRoute
   '/app/carga-imagenes': typeof AppCargaImagenesRoute
   '/app/carreras': typeof AppCarrerasRoute
   '/app/cohortes': typeof AppCohortesRoute
@@ -395,6 +404,7 @@ export interface FileRouteTypes {
     | '/no-autorizado'
     | '/sesion-vencida'
     | '/app/auditoria'
+    | '/app/calificaciones'
     | '/app/carga-imagenes'
     | '/app/carreras'
     | '/app/cohortes'
@@ -437,6 +447,7 @@ export interface FileRouteTypes {
     | '/no-autorizado'
     | '/sesion-vencida'
     | '/app/auditoria'
+    | '/app/calificaciones'
     | '/app/carga-imagenes'
     | '/app/carreras'
     | '/app/cohortes'
@@ -477,6 +488,7 @@ export interface FileRouteTypes {
     | '/no-autorizado'
     | '/sesion-vencida'
     | '/app/auditoria'
+    | '/app/calificaciones'
     | '/app/carga-imagenes'
     | '/app/carreras'
     | '/app/cohortes'
@@ -693,6 +705,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCargaImagenesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/calificaciones': {
+      id: '/app/calificaciones'
+      path: '/calificaciones'
+      fullPath: '/app/calificaciones'
+      preLoaderRoute: typeof AppCalificacionesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/auditoria': {
       id: '/app/auditoria'
       path: '/auditoria'
@@ -889,6 +908,7 @@ const AppSesionesRouteWithChildren = AppSesionesRoute._addFileChildren(
 
 interface AppRouteChildren {
   AppAuditoriaRoute: typeof AppAuditoriaRoute
+  AppCalificacionesRoute: typeof AppCalificacionesRoute
   AppCargaImagenesRoute: typeof AppCargaImagenesRoute
   AppCarrerasRoute: typeof AppCarrerasRoute
   AppCohortesRoute: typeof AppCohortesRoute
@@ -909,6 +929,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAuditoriaRoute: AppAuditoriaRoute,
+  AppCalificacionesRoute: AppCalificacionesRoute,
   AppCargaImagenesRoute: AppCargaImagenesRoute,
   AppCarrerasRoute: AppCarrerasRoute,
   AppCohortesRoute: AppCohortesRoute,
