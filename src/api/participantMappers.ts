@@ -122,16 +122,39 @@ export function parseParticipantAccessCode(input: string): ParsedParticipantAcce
   return { assignmentId, token };
 }
 
+const getAbsoluteUrl = (url: string | undefined): string | undefined => {
+  if (!url) return undefined;
+  if (/^https?:\/\//i.test(url) || /^data:/i.test(url) || /^blob:/i.test(url)) {
+    return url;
+  }
+  const apiBase = (import.meta.env.VITE_API_URL || "http://localhost:8080").replace(/\/+$/, "");
+  const cleanUrl = url.replace(/^\/+/, "");
+  return `${apiBase}/${cleanUrl}`;
+};
+
 export function normalizeResource(raw: unknown, index = 0): ParticipantResourceDTO | null {
   const record = asRecord(raw);
-  const url = asOptionalString(firstValue(record, ["url", "storageUrl", "downloadUrl", "path", "ruta", "src"]));
+  const urlRaw = asOptionalString(firstValue(record, [
+    "url",
+    "publicUrl",
+    "signedUrl",
+    "rutaPublica",
+    "rutaAlmacenamiento",
+    "storageUrl",
+    "downloadUrl",
+    "path",
+    "ruta",
+    "src"
+  ]));
   const text = asOptionalString(firstValue(record, ["text", "texto", "content", "contenido", "value", "valor"]));
   const mimeType = asString(firstValue(record, ["mimeType", "contentType", "tipoMime"])).toLowerCase();
   const rawKind = asString(firstValue(record, ["kind", "type", "tipo", "resourceType", "role"])).toUpperCase();
   const kind: ParticipantResourceKind =
-    rawKind.includes("TEXT") || rawKind.includes("TEXTO") || (!url && text && !mimeType.startsWith("image/"))
+    rawKind.includes("TEXT") || rawKind.includes("TEXTO") || (!urlRaw && text && !mimeType.startsWith("image/"))
       ? "TEXT"
       : "IMAGE";
+
+  const url = getAbsoluteUrl(urlRaw);
 
   if (kind === "IMAGE" && !url) return null;
   if (kind === "TEXT" && !text && !url) return null;
@@ -153,8 +176,11 @@ const collectResources = (record: UnknownRecord): ParticipantResourceDTO[] => {
     ...asArray(record.media),
   ];
 
-  const hasDirectResourceField = ["url", "storageUrl", "downloadUrl", "path", "ruta", "src", "kind", "type", "tipo", "resourceType", "mimeType", "contentType", "tipoMime"]
-    .some((key) => record[key] !== undefined && record[key] !== null && record[key] !== "");
+  const hasDirectResourceField = [
+    "url", "publicUrl", "signedUrl", "rutaPublica", "rutaAlmacenamiento",
+    "storageUrl", "downloadUrl", "path", "ruta", "src",
+    "kind", "type", "tipo", "resourceType", "mimeType", "contentType", "tipoMime"
+  ].some((key) => record[key] !== undefined && record[key] !== null && record[key] !== "");
   const directResource = hasDirectResourceField ? normalizeResource(record, candidates.length) : null;
   const normalized = candidates
     .map((resource, index) => normalizeResource(resource, index))

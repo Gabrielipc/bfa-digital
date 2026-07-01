@@ -44,6 +44,7 @@ export interface SessionAssignment {
   state: 'no-iniciado' | 'en-progreso' | 'completado' | 'interrumpido' | 'anulado';
   lastActivity: string;
   assignmentId: number;
+  attemptId?: number | null;
 }
 
 export interface Incidence {
@@ -110,8 +111,9 @@ interface AdminState {
   ) => Promise<void>;
   updateSessionStatus: (sessionId: string, status: Session['status']) => Promise<void>;
   assignParticipantToSession: (sessionId: string, participantId: string) => Promise<void>;
+  revokeAssignment: (sessionId: string, assignmentId: number) => Promise<void>;
   updateAssignmentStatus: (sessionId: string, participantId: string, status: SessionAssignment['status']) => Promise<void>;
-  addIncidence: (sessionId: string, participantId: string, text: string) => void;
+  addIncidence: (sessionId: string, participantId: string, text: string) => Promise<void>;
   setSimulationActive: (sessionId: string, active: boolean) => void;
   tickSimulation: (sessionId: string) => void;
 }
@@ -348,7 +350,8 @@ export const useAdminStore = create<AdminState>()(
                 overallProgress: a.overallProgress || 0,
                 state: a.state as SessionAssignment['state'],
                 lastActivity: a.lastActivity ? (a.lastActivity.includes('T') ? a.lastActivity.split('T')[1].slice(0, 5) : a.lastActivity) : 'Nunca',
-                assignmentId: a.assignmentId
+                assignmentId: a.assignmentId,
+                attemptId: a.attemptId ?? null
               };
             });
             set((state) => ({
@@ -473,6 +476,20 @@ export const useAdminStore = create<AdminState>()(
         }
       },
 
+      revokeAssignment: async (sessionId, assignmentId) => {
+        set({ loading: true, error: null });
+        try {
+          const res = await apiClient.post(`/sesiones/${sessionId}/asignaciones/${assignmentId}/revocar`);
+          if (!res.data.success) {
+            throw new Error(res.data.message || "No se pudo revocar la asignacion.");
+          }
+          await get().fetchAssignments(sessionId);
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+          throw err;
+        }
+      },
+
       updateAssignmentStatus: async (sessionId, participantId, status) => {
         set((state) => {
           const sessionAsgs = state.assignments[sessionId] || [];
@@ -495,19 +512,31 @@ export const useAdminStore = create<AdminState>()(
         });
       },
 
-      addIncidence: (sessionId, participantId, text) => {
-        const participantName = get().participants.find(p => p.id === participantId)?.name || 'Participante';
-        const newIncidence: Incidence = {
-          id: `inc-${Date.now()}`,
-          sessionId,
-          participantId,
-          participantName,
-          timestamp: new Date().toLocaleTimeString('es-NI', { hour: '2-digit', minute: '2-digit' }),
-          text
-        };
-        set((state) => ({
-          incidences: [newIncidence, ...state.incidences]
-        }));
+      addIncidence: async (sessionId, participantId, text) => {
+        set({ loading: true, error: null });
+        try {
+          const res = await apiClient.post(`/sesiones/${sessionId}/incidencias`, { participantId, text });
+          if (!res.data.success) {
+            throw new Error(res.data.message || "No se pudo registrar la incidencia.");
+          }
+          const participantName = get().participants.find(p => p.id === participantId)?.name || 'Participante';
+          const saved = res.data.data || {};
+          const newIncidence: Incidence = {
+            id: String(saved.id || `inc-${Date.now()}`),
+            sessionId,
+            participantId,
+            participantName: saved.participantName || participantName,
+            timestamp: saved.timestamp || new Date().toLocaleTimeString('es-NI', { hour: '2-digit', minute: '2-digit' }),
+            text: saved.text || text
+          };
+          set((state) => ({
+            incidences: [newIncidence, ...state.incidences],
+            loading: false
+          }));
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+          throw err;
+        }
       },
 
       setSimulationActive: (sessionId, active) => {

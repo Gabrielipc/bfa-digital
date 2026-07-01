@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useParams, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Play, Pause, XCircle, FileWarning, ToggleLeft, ToggleRight, MessageSquare, ShieldCheck, Users, CheckCircle2, AlertTriangle, HelpCircle } from "lucide-react";
+import { ArrowLeft, Play, Pause, XCircle, FileWarning, MessageSquare, Users, CheckCircle2, AlertTriangle, HelpCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAdminStore } from "../../store/adminStore";
 import { useShallow } from "zustand/react/shallow";
@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Badge } from "../../app/components/ui/badge";
 import { Progress } from "../../app/components/ui/progress";
 import { Avatar, AvatarFallback } from "../../app/components/ui/avatar";
+import { Alert, AlertDescription } from "../../app/components/ui/alert";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../app/components/ui/dialog";
 import { Label } from "../../app/components/ui/label";
 import { Textarea } from "../../app/components/ui/textarea";
@@ -37,6 +38,7 @@ function SessionDetailRoute() {
   const [selectedPartName, setSelectedPartName] = useState("");
   const [isIncidenceDialogOpen, setIsIncidenceDialogOpen] = useState(false);
   const [incidenceText, setIncidenceText] = useState("");
+  const [actionError, setActionError] = useState("");
 
   // Polling para traer sesiones y asignaciones reales del backend
   useEffect(() => {
@@ -76,10 +78,18 @@ function SessionDetailRoute() {
     setIsIncidenceDialogOpen(true);
   };
 
-  const handleSaveIncidence = () => {
+  const handleSaveIncidence = async () => {
     if (!selectedPartId || !incidenceText.trim()) return;
-    addIncidence(id, selectedPartId, incidenceText.trim());
-    setIsIncidenceDialogOpen(false);
+    try {
+      setActionError("");
+      await addIncidence(id, selectedPartId, incidenceText.trim());
+      setIsIncidenceDialogOpen(false);
+      setSelectedPartId(null);
+      setSelectedPartName("");
+      setIncidenceText("");
+    } catch (err: any) {
+      setActionError(err.message || "No se pudo registrar la incidencia.");
+    }
   };
 
   const getSubtestBadgeText = (subId: string) => {
@@ -158,6 +168,12 @@ function SessionDetailRoute() {
       </div>
 
       {/* KPI Cards */}
+      {actionError && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{actionError}</AlertDescription>
+        </Alert>
+      )}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <Card className="border-0 shadow-sm">
           <CardContent className="p-4 flex items-center gap-3">
@@ -290,16 +306,22 @@ function SessionDetailRoute() {
                           <MessageSquare className="h-3.5 w-3.5 mr-1" /> Nota
                         </Button>
                         {asg.state === "completado" && (
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-8 text-xs hover:bg-primary/5 hover:text-primary"
-                            asChild
-                          >
-                            <Link to={`/app/resultados/individual/${asg.participantId}`}>
-                              Ver reporte
-                            </Link>
-                          </Button>
+                          asg.attemptId ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 text-xs hover:bg-primary/5 hover:text-primary"
+                              asChild
+                            >
+                              <Link to={`/app/resultados/individual/${asg.attemptId}`}>
+                                Ver reporte
+                              </Link>
+                            </Button>
+                          ) : (
+                            <Button variant="ghost" size="sm" className="h-8 text-xs" disabled title="El backend no reporto attemptId para esta asignacion completada.">
+                              Sin attemptId
+                            </Button>
+                          )
                         )}
                       </div>
                     </TableCell>

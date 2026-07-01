@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useParams, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Plus, Copy, Check, Trash2, ShieldAlert } from "lucide-react";
+import { ArrowLeft, Plus, Copy, Check, ShieldAlert } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAdminStore } from "../../store/adminStore";
 import { Button } from "../../app/components/ui/button";
@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Badge } from "../../app/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../app/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../app/components/ui/select";
+import { Alert, AlertDescription } from "../../app/components/ui/alert";
 
 export const Route = createFileRoute("/app/sesiones/$id/asignaciones")({
   component: SessionAsignacionesRoute,
@@ -22,7 +23,7 @@ function SessionAsignacionesRoute() {
   const allParticipants = useAdminStore((s) => s.participants);
   
   const assignParticipantToSession = useAdminStore((s) => s.assignParticipantToSession);
-  const updateAssignmentStatus = useAdminStore((s) => s.updateAssignmentStatus);
+  const revokeAssignment = useAdminStore((s) => s.revokeAssignment);
 
   const fetchSessions = useAdminStore((s) => s.fetchSessions);
   const fetchParticipants = useAdminStore((s) => s.fetchParticipants);
@@ -31,6 +32,7 @@ function SessionAsignacionesRoute() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedPartId, setSelectedPartId] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
     fetchSessions();
@@ -49,11 +51,21 @@ function SessionAsignacionesRoute() {
   const handleAddParticipant = async () => {
     if (!selectedPartId) return;
     try {
+      setError("");
       await assignParticipantToSession(id, selectedPartId);
       setSelectedPartId("");
       setIsAddDialogOpen(false);
     } catch (err: any) {
-      alert(`Error al asignar participante: ${err.message}`);
+      setError(`Error al asignar participante: ${err.message}`);
+    }
+  };
+
+  const handleRevoke = async (assignmentId: number) => {
+    try {
+      setError("");
+      await revokeAssignment(id, assignmentId);
+    } catch (err: any) {
+      setError(`Error al revocar asignacion: ${err.message}`);
     }
   };
 
@@ -80,6 +92,11 @@ function SessionAsignacionesRoute() {
           </Link>
         </Button>
       </div>
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
       <Card className="border-0 shadow-sm bg-white">
         <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-3 border-b pb-4">
@@ -162,8 +179,8 @@ function SessionAsignacionesRoute() {
                             size="sm"
                             className="text-xs h-8 text-destructive hover:bg-destructive/5 hover:text-destructive"
                             onClick={() => {
-                              if (confirm(`¿Estás seguro de revocar el acceso de ${a.participantName}?`)) {
-                                updateAssignmentStatus(id, a.participantId, "REVOCADO");
+                              if (confirm(`Revocar el acceso de ${a.participantName}?`)) {
+                                handleRevoke(a.assignmentId);
                               }
                             }}
                           >

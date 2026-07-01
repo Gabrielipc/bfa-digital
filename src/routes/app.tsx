@@ -71,6 +71,8 @@ const NAV_GROUPS: { group: string; items: NavItem[] }[] = [
     items: [
       { to: "/app/auditoria", label: "Auditoría", icon: ShieldCheck, roles: ["admin"] },
       { to: "/app/usuarios", label: "Usuarios", icon: UserCog, roles: ["admin"] },
+      { to: "/app/roles", label: "Roles y permisos", icon: UserCog, roles: ["admin"] },
+      { to: "/app/respaldos", label: "Respaldos", icon: Database, roles: ["admin"] },
     ],
   },
 ];
